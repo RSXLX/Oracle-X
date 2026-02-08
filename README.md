@@ -350,24 +350,6 @@ data: [DONE]
 
 ---
 
-## 📨 联系方式
-
-如有问题或建议，欢迎通过以下方式联系：
-
-- **Issues**：[GitHub Issues](https://github.com/yourusername/oracle-x/issues)
-- **Email**：your.email@example.com
-
----
-
-## 🙏 致谢
-
-- [technicalindicators](https://github.com/anandanand84/technicalindicators) - 优秀的技术指标计算库
-- [Binance API](https://binance-docs.github.io/apidocs/) - 稳定的市场数据来源
-- [Step AI](https://www.stepfun.com/) - 强大的AI分析能力
-- [lightweight-charts](https://tradingview.github.io/lightweight-charts/) - 高性能图表库
-
----
-
 **⚠️ 风险提示**
 
 加密货币交易具有高风险性。Oracle-X 提供的分析仅供参考，不构成投资建议。请在充分了解风险的前提下进行交易决策。
