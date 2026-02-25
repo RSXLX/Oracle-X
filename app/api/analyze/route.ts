@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000); // 20秒超时
         
-        console.log(`[INFO] Fetching multi-timeframe klines from Binance via proxy (7892)...`);
+        console.warn(`[INFO] Fetching multi-timeframe klines from Binance via proxy (7892)...`);
         
         // 并行请求
         const [res1h, res4h, res1d] = await Promise.allSettled([
@@ -85,26 +85,26 @@ export async function POST(request: NextRequest) {
         if (res1h.status === 'fulfilled' && res1h.value.ok) {
           const raw = await res1h.value.json() as [number, string, string, string, string, string, ...unknown[]][];
           klines = parseKlines(raw);
-          console.log(`[SUCCESS] Fetched ${klines.length} 1h klines`);
+          console.warn(`[SUCCESS] Fetched ${klines.length} 1h klines`);
         }
         
         // 解析 4h 数据
         if (res4h.status === 'fulfilled' && res4h.value.ok) {
           const raw = await res4h.value.json() as [number, string, string, string, string, string, ...unknown[]][];
           klines4h = parseKlines(raw);
-          console.log(`[SUCCESS] Fetched ${klines4h.length} 4h klines`);
+          console.warn(`[SUCCESS] Fetched ${klines4h.length} 4h klines`);
         }
         
         // 解析 1d 数据
         if (res1d.status === 'fulfilled' && res1d.value.ok) {
           const raw = await res1d.value.json() as [number, string, string, string, string, string, ...unknown[]][];
           klines1d = parseKlines(raw);
-          console.log(`[SUCCESS] Fetched ${klines1d.length} 1d klines`);
+          console.warn(`[SUCCESS] Fetched ${klines1d.length} 1d klines`);
         }
         
       } catch (error) {
         console.warn(`[WARN] Failed to fetch klines:`, error instanceof Error ? error.message : error);
-        console.log(`[INFO] Proceeding with available data`);
+        console.warn(`[INFO] Proceeding with available data`);
       }
     }
 
@@ -112,10 +112,10 @@ export async function POST(request: NextRequest) {
     const currentPrice = parseFloat(requestData.marketData.price) || 
       (klines.length > 0 ? parseFloat(klines[klines.length - 1].close as string) : 0);
     
-    console.log(`[DEBUG] Klines count: ${klines.length}`);
-    console.log(`[DEBUG] Current price: ${currentPrice}`);
+    console.warn(`[DEBUG] Klines count: ${klines.length}`);
+    console.warn(`[DEBUG] Current price: ${currentPrice}`);
     if (klines.length > 0) {
-      console.log(`[DEBUG] Sample kline:`, klines[0]);
+      console.warn(`[DEBUG] Sample kline:`, klines[0]);
     }
     
     // K线压缩 (多周期) 与 Twitter 情绪获取
@@ -124,15 +124,15 @@ export async function POST(request: NextRequest) {
       getTwitterSentiment(requestData.symbol)
     ]);
     
-    console.log(`[DEBUG] Kline summary:`, klineSummary);
-    console.log(`[DEBUG] Twitter sentiment:`, twitterSentiment?.overallSentiment);
+    console.warn(`[DEBUG] Kline summary:`, klineSummary);
+    console.warn(`[DEBUG] Twitter sentiment:`, twitterSentiment?.overallSentiment);
     
     // 注入 Twitter 数据到 marketData
     requestData.marketData.twitterSentiment = twitterSentiment;
     
     // 技术指标计算 (基于 1h 数据)
     const indicators = calculateAllIndicators(klines, currentPrice);
-    console.log(`[DEBUG] Indicators calculated:`, indicators);
+    console.warn(`[DEBUG] Indicators calculated:`, indicators);
 
     // 5. Prompt 构造
     const systemPrompt = buildSystemPrompt();

@@ -57,7 +57,7 @@ export async function getTwitterSentiment(symbol: string): Promise<TwitterSentim
   }
 
   try {
-    console.log(`[Twitter Service] Searching for: ${query}`);
+    console.warn(`[Twitter Service] Searching for: ${query}`);
     
     const response = await fetch(
       `https://twitter241.p.rapidapi.com/search?type=Top&count=20&query=${encodeURIComponent(query)}`,

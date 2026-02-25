@@ -126,7 +126,7 @@ export function useBinanceKlines(
 
   // 启用 Mock 模式
   const enableMockMode = useCallback(() => {
-    console.log('Switching to Mock Mode...');
+    console.warn('Switching to Mock Mode...');
     setUsingMock(true);
     setError(null); // 清除错误，因为 Mock 是预期的回退
     setConnected(true); // 模拟连接状态
