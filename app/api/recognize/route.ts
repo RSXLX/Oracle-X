@@ -1,15 +1,14 @@
 /**
  * POST /api/recognize
  * 交易截图视觉识别 API
- * 使用 step-1o-turbo-vision 模型识别交易平台和交易对
  */
 
 import { NextRequest } from 'next/server';
 import { getVisionConfig, callVisionAI } from '@/lib/ai-client';
+import { errorResponse, getRequestId } from '@/lib/api-error';
 
 export const runtime = 'edge';
 
-// 识别结果类型
 interface RecognizeResult {
   platform: string | null;
   pair: string | null;
@@ -18,7 +17,6 @@ interface RecognizeResult {
   confidence: number;
 }
 
-// 视觉识别 Prompt
 const RECOGNIZE_PROMPT = `你是一个专业的交易界面识别专家。请分析这张交易平台截图，提取以下信息：
 
 1. **平台** (platform): 识别交易平台名称，如 Binance、OKX、Bybit、Coinbase、Uniswap 等
@@ -38,42 +36,27 @@ const RECOGNIZE_PROMPT = `你是一个专业的交易界面识别专家。请分
 如果无法识别某个字段，使用 null。`;
 
 export async function POST(request: NextRequest) {
+  const requestId = getRequestId(request);
+
   try {
-    // 1. 解析请求体
     let body: { image?: string };
     try {
       body = await request.json();
     } catch {
-      return new Response(
-        JSON.stringify({ error: 'Invalid parameters', detail: 'Invalid JSON body' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(400, 'INVALID_JSON', 'Invalid parameters', requestId, 'Invalid JSON body');
     }
 
-    // 2. 验证图片数据
     if (!body.image || typeof body.image !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Invalid parameters', detail: 'Missing or invalid image field' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(400, 'INVALID_PARAMETERS', 'Invalid parameters', requestId, 'Missing or invalid image field');
     }
 
-    // 限制图片大小（约 10MB base64）
     if (body.image.length > 15 * 1024 * 1024) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid parameters', detail: 'Image too large (max 10MB)' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(400, 'IMAGE_TOO_LARGE', 'Invalid parameters', requestId, 'Image too large (max 10MB)');
     }
 
-    // 3. 获取配置并调用视觉 AI
     const config = getVisionConfig();
-    
     if (!config.apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'AI service unavailable', detail: 'API key not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(500, 'AI_API_KEY_MISSING', 'AI service unavailable', requestId, 'API key not configured');
     }
 
     let aiResponse: string;
@@ -81,16 +64,11 @@ export async function POST(request: NextRequest) {
       aiResponse = await callVisionAI(body.image, RECOGNIZE_PROMPT, config);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return new Response(
-        JSON.stringify({ error: 'AI service unavailable', detail: message }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(500, 'AI_UPSTREAM_ERROR', 'AI service unavailable', requestId, message);
     }
 
-    // 4. 解析 AI 响应
     let result: RecognizeResult;
     try {
-      // 尝试从响应中提取 JSON
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
@@ -98,41 +76,29 @@ export async function POST(request: NextRequest) {
         throw new Error('No JSON found in response');
       }
     } catch {
-      // 解析失败时返回默认结果
       result = {
         platform: null,
         pair: null,
         trade_type: null,
         direction_hint: null,
-        confidence: 0
+        confidence: 0,
       };
     }
 
-    // 5. 返回识别结果
-    return new Response(
-      JSON.stringify(result),
-      { 
-        status: 200, 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        } 
-      }
-    );
-
-  } catch (error) {
-    console.error('Recognize API error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'X-Request-Id': requestId,
+      },
+    });
+  } catch {
+    return errorResponse(500, 'INTERNAL_ERROR', 'Internal server error', requestId);
   }
 }
 
-// 只允许 POST 方法
-export async function GET() {
-  return new Response(
-    JSON.stringify({ error: 'Method not allowed' }),
-    { status: 405, headers: { 'Content-Type': 'application/json' } }
-  );
+export async function GET(request: NextRequest) {
+  const requestId = getRequestId(request);
+  return errorResponse(405, 'METHOD_NOT_ALLOWED', 'Method not allowed', requestId);
 }
