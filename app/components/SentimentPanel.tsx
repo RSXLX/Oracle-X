@@ -7,18 +7,19 @@ interface TweetData {
   id: string;
   text: string;
   author: string;
-  authorHandle: string;
-  timeAgo: string;
+  authorHandle?: string;
+  createdAt?: string;
+  timeAgo?: string;
   sentiment: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
-  metrics: {
-    likes: number;
-    retweets: number;
-    replies: number;
+  metrics?: {
+    likes?: number;
+    retweets?: number;
+    replies?: number;
   };
 }
 
 interface TwitterSentiment {
-  symbol: string;
+  symbol?: string;
   query: string;
   totalCount: number;
   positive: number;
@@ -27,7 +28,7 @@ interface TwitterSentiment {
   overallSentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
   confidencePercent: number;
   tweets: TweetData[];
-  fetchedAt: string;
+  fetchedAt?: string;
 }
 
 interface SentimentPanelProps {
@@ -194,23 +195,30 @@ export default function SentimentPanel({ symbol }: SentimentPanelProps) {
           {tweets.length === 0 ? (
             <div className={styles.noTweets}>No tweets found</div>
           ) : (
-            tweets.map((tweet) => (
-              <div key={tweet.id} className={styles.tweetCard}>
-                <div className={styles.tweetHeader}>
-                  <span className={styles.tweetAuthor}>@{tweet.authorHandle}</span>
-                  <span className={styles.tweetTime}>{tweet.timeAgo}</span>
+            tweets.map((tweet) => {
+              const handle = tweet.authorHandle || tweet.author || 'unknown';
+              const time = tweet.timeAgo || (tweet.createdAt ? new Date(tweet.createdAt).toLocaleString() : 'recent');
+              const likes = tweet.metrics?.likes ?? 0;
+              const retweets = tweet.metrics?.retweets ?? 0;
+
+              return (
+                <div key={tweet.id} className={styles.tweetCard}>
+                  <div className={styles.tweetHeader}>
+                    <span className={styles.tweetAuthor}>@{handle}</span>
+                    <span className={styles.tweetTime}>{time}</span>
+                  </div>
+                  <div className={styles.tweetText}>{tweet.text}</div>
+                  <div className={styles.tweetFooter}>
+                    <span className={styles.tweetSentiment}>
+                      {SENTIMENT_EMOJI[tweet.sentiment]} {tweet.sentiment}
+                    </span>
+                    <span className={styles.tweetMetrics}>
+                      ❤️ {likes} · 🔁 {retweets}
+                    </span>
+                  </div>
                 </div>
-                <div className={styles.tweetText}>{tweet.text}</div>
-                <div className={styles.tweetFooter}>
-                  <span className={styles.tweetSentiment}>
-                    {SENTIMENT_EMOJI[tweet.sentiment]} {tweet.sentiment}
-                  </span>
-                  <span className={styles.tweetMetrics}>
-                    ❤️ {tweet.metrics.likes} · 🔁 {tweet.metrics.retweets}
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

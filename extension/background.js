@@ -3,12 +3,29 @@
  * 处理截图捕获和 Side Panel 通信
  */
 
-// API 基础 URL（开发环境）
-const API_BASE_URL = 'http://localhost:3000';
+// API 基础 URL（默认开发环境）
+const DEFAULT_API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL_STORAGE_KEY = 'oraclexApiBaseUrl';
 
 // 存储当前截图数据
 let currentScreenshot = null;
 let currentAnalysisData = null;
+
+/**
+ * 获取 API Base URL（支持 storage 覆盖）
+ */
+async function getApiBaseUrl() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([API_BASE_URL_STORAGE_KEY], (result) => {
+      const value = result?.[API_BASE_URL_STORAGE_KEY];
+      if (typeof value === 'string' && value.trim()) {
+        resolve(value.trim().replace(/\/$/, ''));
+      } else {
+        resolve(DEFAULT_API_BASE_URL);
+      }
+    });
+  });
+}
 
 /**
  * 监听扩展图标点击事件
@@ -75,8 +92,9 @@ async function captureAndAnalyze(tab) {
 async function callRecognizeAPI(screenshotBase64) {
   // 移除 data:image/png;base64, 前缀
   const base64Data = screenshotBase64.replace(/^data:image\/\w+;base64,/, '');
+  const apiBaseUrl = await getApiBaseUrl();
   
-  const response = await fetch(`${API_BASE_URL}/api/recognize`, {
+  const response = await fetch(`${apiBaseUrl}/api/recognize`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -96,7 +114,8 @@ async function callRecognizeAPI(screenshotBase64) {
  * 调用分析 API（SSE 流式）
  */
 async function callAnalyzeAPI(symbol, direction, marketData) {
-  const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+  const apiBaseUrl = await getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}/api/analyze`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -120,7 +139,8 @@ async function callAnalyzeAPI(symbol, direction, marketData) {
  * 调用 Twitter 情绪分析 API
  */
 async function callTwitterAPI(symbol) {
-  const response = await fetch(`${API_BASE_URL}/api/twitter?symbol=${symbol}`);
+  const apiBaseUrl = await getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}/api/twitter?symbol=${symbol}`);
   
   if (!response.ok) {
     const error = await response.json();

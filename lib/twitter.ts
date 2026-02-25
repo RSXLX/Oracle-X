@@ -42,18 +42,6 @@ function classifySentiment(text: string): 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' {
   return 'NEUTRAL';
 }
 
-// 时间格式化
-function formatTimeAgo(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffHours / 24);
-  
-  if (diffDays > 0) return `${diffDays}d ago`;
-  if (diffHours > 0) return `${diffHours}h ago`;
-  return 'just now';
-}
 
 /**
  * 获取 Twitter 情绪数据

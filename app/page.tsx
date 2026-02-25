@@ -6,7 +6,7 @@ import { useBinanceKlines } from './hooks/useBinanceKlines';
 import { useTechnicalIndicators } from './hooks/useTechnicalIndicators';
 import TimeframeSelector from './components/TimeframeSelector';
 import IndicatorPanel from './components/IndicatorPanel';
-// import SentimentPanel from './components/SentimentPanel';
+import SentimentPanel from './components/SentimentPanel';
 import styles from './page.module.css';
 
 // 动态导入 K 线图（避免 SSR 问题）
