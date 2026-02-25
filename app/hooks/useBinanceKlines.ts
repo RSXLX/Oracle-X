@@ -106,6 +106,7 @@ export function useBinanceKlines(
 
   const wsRef = useRef<WebSocket | null>(null);
   const mockIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mockModeRef = useRef(false);
 
   // 格式化功能
   const formatVolume = (volume: number): string => {
@@ -128,6 +129,7 @@ export function useBinanceKlines(
   const enableMockMode = useCallback(() => {
     console.warn('Switching to Mock Mode...');
     setUsingMock(true);
+    mockModeRef.current = true;
     setError(null); // 清除错误，因为 Mock 是预期的回退
     setConnected(true); // 模拟连接状态
 
@@ -199,6 +201,7 @@ export function useBinanceKlines(
 
       setLoading(false);
       setUsingMock(false); // 成功获取数据，关闭 Mock
+      mockModeRef.current = false;
     } catch (err) {
       console.warn('Fetch failed, falling back to mock:', err);
       enableMockMode();
@@ -278,7 +281,7 @@ export function useBinanceKlines(
     fetchData();
     // 延迟连接 WS，等待 REST 结果（如果 REST 失败会直接进 Mock）
     const wsTimer = setTimeout(() => {
-      if (!useBinanceKlines.mocked) { // 简单防抖标志
+      if (!mockModeRef.current) {
         connectWebSocket();
       }
     }, 1000);
@@ -293,5 +296,3 @@ export function useBinanceKlines(
   return { klines, stats, loading, connected, error, usingMock };
 }
 
-// 静态标志位，防止重复 Mock 初始化
-useBinanceKlines.mocked = false;
