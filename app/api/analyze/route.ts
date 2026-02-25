@@ -16,6 +16,7 @@ import { ProxyAgent, fetch as proxyFetch } from 'undici';
 export const runtime = 'nodejs';
 
 const proxyAgent = new ProxyAgent('http://127.0.0.1:7892');
+const AI_TIMEOUT_MS = 45000;
 
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
@@ -110,7 +111,12 @@ export async function POST(request: NextRequest) {
 
     let aiResponse: Response;
     try {
-      aiResponse = await callAIStream(systemPrompt, userPrompt, config);
+      aiResponse = await Promise.race([
+        callAIStream(systemPrompt, userPrompt, config),
+        new Promise<Response>((_, reject) =>
+          setTimeout(() => reject(new Error('AI upstream timeout')), AI_TIMEOUT_MS)
+        ),
+      ]);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return errorResponse(500, 'AI_UPSTREAM_ERROR', 'AI service unavailable', requestId, message);

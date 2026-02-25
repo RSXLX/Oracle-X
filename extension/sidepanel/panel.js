@@ -14,6 +14,8 @@ const state = {
 // DOM 元素
 const elements = {
   retryBtn: document.getElementById('retryBtn'),
+  statusSection: document.getElementById('statusSection'),
+  statusContent: document.getElementById('statusContent'),
   recognizeCard: document.getElementById('recognizeCard'),
   recognizeContent: document.getElementById('recognizeContent'),
   intentSection: document.getElementById('intentSection'),
@@ -45,6 +47,8 @@ function init() {
   
   // 监听来自 Service Worker 的消息
   chrome.runtime.onMessage.addListener(handleMessage);
+
+  checkConfigStatus();
   
   // 请求当前截图（如果已存在）
   chrome.runtime.sendMessage({ type: 'GET_SCREENSHOT' }, (response) => {
@@ -52,6 +56,28 @@ function init() {
       state.screenshot = response.screenshot;
     }
   });
+}
+
+async function checkConfigStatus() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'CHECK_CONFIG_STATUS' });
+    if (!response?.success) {
+      showStatus(`配置检查失败：${response?.error || 'unknown error'}`, response?.code, response?.requestId);
+      return;
+    }
+
+    const cfg = response.data || {};
+    const missing = [];
+    if (!cfg.aiApiKeyConfigured) missing.push('STEP_API_KEY');
+    if (!cfg.aiBaseUrlConfigured) missing.push('AI_BASE_URL');
+    if (!cfg.aiModelConfigured) missing.push('AI_MODEL');
+
+    if (missing.length > 0) {
+      showStatus(`后端配置缺失：${missing.join(', ')}`);
+    }
+  } catch (error) {
+    showStatus(`配置检查失败：${error?.message || 'unknown error'}`);
+  }
 }
 
 /**
@@ -73,7 +99,10 @@ function handleMessage(message) {
       
     case 'RECOGNIZE_ERROR':
       state.status = 'error';
-      renderRecognizeError(message.data.error);
+      renderRecognizeError(message.data.error, {
+        code: message.data.code,
+        requestId: message.data.requestId
+      });
       break;
       
     case 'ANALYSIS_STREAM':
@@ -84,12 +113,16 @@ function handleMessage(message) {
     case 'ANALYSIS_COMPLETE':
       state.analysisText = message.data.fullText;
       state.status = 'complete';
+      hideStatus();
       renderAnalysisComplete();
       break;
       
     case 'ANALYSIS_ERROR':
       state.status = 'error';
-      renderAnalysisError(message.data.error);
+      renderAnalysisError(message.data.error, {
+        code: message.data.code,
+        requestId: message.data.requestId
+      });
       break;
   }
 }
@@ -98,6 +131,7 @@ function handleMessage(message) {
  * 渲染识别中状态
  */
 function renderRecognizing() {
+  hideStatus();
   elements.recognizeContent.innerHTML = `
     <div class="loading-state">
       <div class="spinner"></div>
@@ -147,7 +181,8 @@ function renderRecognizeResult() {
 /**
  * 渲染识别错误
  */
-function renderRecognizeError(error) {
+function renderRecognizeError(error, meta = {}) {
+  showStatus(`识别失败：${error}`, meta.code, meta.requestId);
   elements.recognizeContent.innerHTML = `
     <div class="error-state">
       <span>❌</span>
@@ -232,7 +267,8 @@ function renderAnalysisComplete() {
 /**
  * 渲染分析错误
  */
-function renderAnalysisError(error) {
+function renderAnalysisError(error, meta = {}) {
+  showStatus(`分析失败：${error}`, meta.code, meta.requestId);
   elements.analysisContent.innerHTML = `
     <div class="error-state">
       <span>❌</span>
@@ -313,6 +349,24 @@ function handleRetry() {
   
   chrome.runtime.sendMessage({ type: 'RETRY_CAPTURE' });
   renderRecognizing();
+}
+
+function showStatus(message, code, requestId) {
+  const extras = [];
+  if (code) extras.push(`code: ${code}`);
+  if (requestId) extras.push(`request: ${requestId}`);
+
+  const extraLine = extras.length > 0 ? `<div class="status-meta">${extras.join(' · ')}</div>` : '';
+  elements.statusContent.innerHTML = `
+    <div class="status-text">${message}</div>
+    ${extraLine}
+  `;
+  elements.statusSection.classList.remove('hidden');
+}
+
+function hideStatus() {
+  elements.statusSection.classList.add('hidden');
+  elements.statusContent.innerHTML = '';
 }
 
 /**

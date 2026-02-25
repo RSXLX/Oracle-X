@@ -1,6 +1,5 @@
 import { TwitterSentimentResult } from '@/types/analyze';
 
-// 交易对到搜索关键词的映射
 function mapSymbolToQuery(symbol: string): string {
   const mapping: Record<string, string> = {
     BTCUSDT: 'bitcoin OR btc price trend',
@@ -10,55 +9,83 @@ function mapSymbolToQuery(symbol: string): string {
   return mapping[symbol] || `${symbol} crypto trend`;
 }
 
-// 简单情绪分类（基于关键词）
 function classifySentiment(text: string): 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' {
   const lowerText = text.toLowerCase();
-  
+
   const positiveKeywords = [
-    'bullish', 'pump', 'moon', 'buy', 'long', 'breakout', 'surge', 'rally',
-    'higher', 'up', 'gain', 'profit', 'bull', 'green', 'ath', 'strong',
-    '🚀', '📈', '💎', '🔥', '💪', '🟢'
+    'bullish',
+    'pump',
+    'moon',
+    'buy',
+    'long',
+    'breakout',
+    'surge',
+    'rally',
+    'higher',
+    'up',
+    'gain',
+    'profit',
+    'bull',
+    'green',
+    'ath',
+    'strong',
+    '🚀',
+    '📈',
+    '💎',
+    '🔥',
+    '💪',
+    '🟢',
   ];
-  
+
   const negativeKeywords = [
-    'bearish', 'dump', 'crash', 'sell', 'short', 'breakdown', 'drop', 'fall',
-    'lower', 'down', 'loss', 'bear', 'red', 'weak', 'fear', 'scam',
-    '📉', '🔴', '💀', '⚠️'
+    'bearish',
+    'dump',
+    'crash',
+    'sell',
+    'short',
+    'breakdown',
+    'drop',
+    'fall',
+    'lower',
+    'down',
+    'loss',
+    'bear',
+    'red',
+    'weak',
+    'fear',
+    'scam',
+    '📉',
+    '🔴',
+    '💀',
+    '⚠️',
   ];
-  
+
   let positiveScore = 0;
   let negativeScore = 0;
-  
+
   for (const keyword of positiveKeywords) {
     if (lowerText.includes(keyword)) positiveScore++;
   }
-  
+
   for (const keyword of negativeKeywords) {
     if (lowerText.includes(keyword)) negativeScore++;
   }
-  
+
   if (positiveScore > negativeScore) return 'POSITIVE';
   if (negativeScore > positiveScore) return 'NEGATIVE';
   return 'NEUTRAL';
 }
 
-
-/**
- * 获取 Twitter 情绪数据
- */
 export async function getTwitterSentiment(symbol: string): Promise<TwitterSentimentResult | null> {
   const query = mapSymbolToQuery(symbol);
-  
+
   const rapidApiKey = process.env.RAPIDAPI_KEY;
-  
+
   if (!rapidApiKey) {
-    console.error('[Twitter Service] RapidAPI key not configured');
     return null;
   }
 
   try {
-    console.warn(`[Twitter Service] Searching for: ${query}`);
-    
     const response = await fetch(
       `https://twitter241.p.rapidapi.com/search?type=Top&count=20&query=${encodeURIComponent(query)}`,
       {
@@ -70,45 +97,38 @@ export async function getTwitterSentiment(symbol: string): Promise<TwitterSentim
     );
 
     if (!response.ok) {
-      console.error(`[Twitter Service] API error: ${response.status}`);
       return null;
     }
 
     const data = await response.json();
-    
-    // 解析推文数据
     const tweets: TwitterSentimentResult['tweets'] = [];
 
-    // 处理 twitter241 API 返回格式
     const entries = data?.result?.timeline?.instructions?.[0]?.entries || [];
-    
+
     for (const entry of entries) {
       const tweetResult = entry?.content?.itemContent?.tweet_results?.result;
       if (!tweetResult) continue;
-      
+
       const legacy = tweetResult.legacy;
       const userLegacy = tweetResult.core?.user_results?.result?.legacy;
-      
+
       if (!legacy || !userLegacy) continue;
-      
+
       const text = legacy.full_text || '';
       const sentiment = classifySentiment(text);
-      
+
       tweets.push({
         id: legacy.id_str || entry.entryId,
-        text: text.slice(0, 280), // 截断过长文本
+        text: text.slice(0, 280),
         author: userLegacy.name || 'Unknown',
-        // authorHandle: userLegacy.screen_name, // twitter241 may not return logic simply
         createdAt: legacy.created_at || new Date().toISOString(),
-        // timeAgo: formatTimeAgo... // TweetData interface updates needed if we want timeAgo
         sentiment,
       });
     }
 
-    // 统计情绪
-    const positive = tweets.filter(t => t.sentiment === 'POSITIVE').length;
-    const negative = tweets.filter(t => t.sentiment === 'NEGATIVE').length;
-    const neutral = tweets.filter(t => t.sentiment === 'NEUTRAL').length;
+    const positive = tweets.filter((t) => t.sentiment === 'POSITIVE').length;
+    const negative = tweets.filter((t) => t.sentiment === 'NEGATIVE').length;
+    const neutral = tweets.filter((t) => t.sentiment === 'NEUTRAL').length;
     const total = tweets.length;
 
     let overallSentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL';
@@ -117,7 +137,7 @@ export async function getTwitterSentiment(symbol: string): Promise<TwitterSentim
     if (total > 0) {
       const positiveRatio = positive / total;
       const negativeRatio = negative / total;
-      
+
       if (positiveRatio > 0.5) {
         overallSentiment = 'BULLISH';
         confidencePercent = Math.round(positiveRatio * 100);
@@ -139,9 +159,7 @@ export async function getTwitterSentiment(symbol: string): Promise<TwitterSentim
       confidencePercent,
       tweets: tweets.slice(0, 10),
     };
-
-  } catch (error) {
-    console.error('[Twitter Service] Error:', error);
+  } catch {
     return null;
   }
 }

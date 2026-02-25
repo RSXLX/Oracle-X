@@ -11,6 +11,19 @@ const API_BASE_URL_STORAGE_KEY = 'oraclexApiBaseUrl';
 let currentScreenshot = null;
 let currentAnalysisData = null;
 
+function parseApiError(errorPayload, fallbackMessage) {
+  if (!errorPayload || typeof errorPayload !== 'object') {
+    return { message: fallbackMessage };
+  }
+
+  const message = errorPayload.detail || errorPayload.error || fallbackMessage;
+  return {
+    message,
+    code: errorPayload.code,
+    requestId: errorPayload.requestId,
+  };
+}
+
 /**
  * 获取 API Base URL（支持 storage 覆盖）
  */
@@ -81,7 +94,11 @@ async function captureAndAnalyze(tab) {
     console.error('Capture and analyze error:', error);
     chrome.runtime.sendMessage({
       type: 'RECOGNIZE_ERROR',
-      data: { error: error.message }
+      data: {
+        error: error?.message || 'Recognition failed',
+        code: error?.code,
+        requestId: error?.requestId,
+      }
     });
   }
 }
@@ -104,7 +121,7 @@ async function callRecognizeAPI(screenshotBase64) {
   
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Recognition failed');
+    throw parseApiError(error, 'Recognition failed');
   }
   
   return await response.json();
@@ -129,7 +146,7 @@ async function callAnalyzeAPI(symbol, direction, marketData) {
   
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Analysis failed');
+    throw parseApiError(error, 'Analysis failed');
   }
   
   return response;
@@ -144,9 +161,21 @@ async function callTwitterAPI(symbol) {
   
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Twitter sentiment analysis failed');
+    throw parseApiError(error, 'Twitter sentiment analysis failed');
   }
   
+  return await response.json();
+}
+
+async function callConfigStatusAPI() {
+  const apiBaseUrl = await getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}/api/config-status`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw parseApiError(error, 'Config status check failed');
+  }
+
   return await response.json();
 }
 
@@ -172,7 +201,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 获取 Twitter 情绪
     callTwitterAPI(message.data.symbol)
       .then(result => sendResponse({ success: true, data: result }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
+      .catch(error => sendResponse({ success: false, error: error.message, code: error.code, requestId: error.requestId }));
+    return true;
+  }
+
+  if (message.type === 'CHECK_CONFIG_STATUS') {
+    callConfigStatusAPI()
+      .then(result => sendResponse({ success: true, data: result }))
+      .catch(error => sendResponse({ success: false, error: error.message, code: error.code, requestId: error.requestId }));
     return true;
   }
   
@@ -239,7 +275,11 @@ async function handleAnalysis(data) {
   } catch (error) {
     chrome.runtime.sendMessage({
       type: 'ANALYSIS_ERROR',
-      data: { error: error.message }
+      data: {
+        error: error?.message || 'Analysis failed',
+        code: error?.code,
+        requestId: error?.requestId,
+      }
     });
     throw error;
   }
