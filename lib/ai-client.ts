@@ -12,13 +12,26 @@ export interface AIClientConfig {
 }
 
 /**
+ * 规范化 API Base URL
+ * - 去除末尾斜杠
+ * - 兼容 /V1 与 /v1
+ */
+function normalizeBaseUrl(baseUrl: string): string {
+  const trimmed = (baseUrl || '').trim().replace(/\/$/, '');
+  if (trimmed.endsWith('/V1')) {
+    return `${trimmed.slice(0, -3)}/v1`;
+  }
+  return trimmed;
+}
+
+/**
  * 获取 AI 配置
  */
 export function getAIConfig(): AIClientConfig {
   return {
     apiKey: process.env.STEP_API_KEY || '',
     model: process.env.AI_MODEL || 'step-1-8k',
-    baseUrl: process.env.AI_BASE_URL || 'https://api.stepfun.com/v1',
+    baseUrl: normalizeBaseUrl(process.env.AI_BASE_URL || 'https://api.stepfun.com/v1'),
     temperature: parseFloat(process.env.AI_TEMPERATURE || '0.3'),
     maxTokens: parseInt(process.env.AI_MAX_TOKENS || '1000', 10)
   };
@@ -134,7 +147,7 @@ export function getVisionConfig(): AIClientConfig {
   return {
     apiKey: process.env.STEP_API_KEY || '',
     model: process.env.AI_VISION_MODEL || 'step-1o-turbo-vision',
-    baseUrl: process.env.AI_BASE_URL || 'https://api.stepfun.com/v1',
+    baseUrl: normalizeBaseUrl(process.env.AI_BASE_URL || 'https://api.stepfun.com/v1'),
     temperature: 0.2, // 识别任务使用更低温度
     maxTokens: 500
   };

@@ -1,5 +1,14 @@
 # Oracle-X 项目进度（2026-02-25）
 
+## 本轮新增（2026-02-25 晚）
+
+- 已按要求配置本地 `.env.local`：
+  - `AI_BASE_URL=https://fucaixie.xyz/V1`（代码层自动兼容为 `/v1`）
+  - `AI_MODEL=MiniMax M2.5-hignspeed`
+  - `STEP_API_KEY` 已写入本地环境文件
+- 已验证网关连通性（`/v1/models` 可访问）
+- 已新增演示清单：`docs/DEMO_CHECKLIST.md`
+
 ## 当前状态总览
 
 - **仓库状态**：已从 `https://github.com/RSXLX/Oracle-X` 拉取到本地
