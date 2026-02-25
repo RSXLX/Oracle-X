@@ -1,5 +1,15 @@
 # Oracle-X 项目进度（2026-02-25）
 
+## 本轮新增（2026-02-26 凌晨）
+
+- 新增 `NoFOMO` 决策引擎：`lib/no-fomo.ts`
+- 新增产品化决策接口：`POST /api/decision`
+  - 输出 `ALLOW / WARN / BLOCK`
+  - 输出 `impulseScore / coolingSeconds / reasons`
+- 新增 Desktop 壳（Electron）：`desktop/`
+  - 本地设置管理（API URL / 风险档位 / 强制阻断开关）
+  - 可通过 `npm run desktop:install && npm run desktop:dev` 启动
+
 ## 本轮新增（2026-02-25 晚）
 
 - 已按要求配置本地 `.env.local`：

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Oracle-X NoFOMO Desktop</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>Oracle-X NoFOMO Desktop</h1>
+        <p>交易前冷静层 · 决策拦截中心</p>
+      </header>
+
+      <section class="card">
+        <h2>本地设置</h2>
+        <label>API Base URL <input id="apiBaseUrl" /></label>
+        <label>风险档位
+          <select id="profile">
+            <option value="conservative">保守</option>
+            <option value="balanced">平衡</option>
+            <option value="aggressive">激进</option>
+          </select>
+        </label>
+        <label class="row">
+          <input id="enableNoFomoBlock" type="checkbox" />
+          启用高风险强制阻断（No FOMO）
+        </label>
+        <button id="saveBtn">保存设置</button>
+        <div id="saveStatus" class="muted"></div>
+      </section>
+
+      <section class="card">
+        <h2>产品状态</h2>
+        <ul>
+          <li>✅ 桌面壳已就绪（Electron）</li>
+          <li>✅ NoFOMO 决策协议已接入后端 `/api/decision`</li>
+          <li>🔜 交易拦截桥接（Extension → Desktop）</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

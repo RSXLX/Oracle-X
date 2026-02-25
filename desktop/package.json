@@ -1,0 +1,14 @@
+{
+  "name": "oracle-x-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Oracle-X NoFOMO Desktop shell",
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.2.1"
+  }
+}

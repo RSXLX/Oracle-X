@@ -145,6 +145,18 @@ npm run dev
 
 访问 `http://localhost:3000` 查看应用。
 
+### NoFOMO Desktop（桌面版）
+
+```bash
+# 安装桌面端依赖
+npm run desktop:install
+
+# 启动桌面端（Electron）
+npm run desktop:dev
+```
+
+桌面端用于承载产品化能力（本地设置、冷静层策略、后续拦截中枢）。
+
 ### 使用 Chrome 扩展
 
 1. 打开 Chrome 浏览器，进入 `chrome://extensions/`
