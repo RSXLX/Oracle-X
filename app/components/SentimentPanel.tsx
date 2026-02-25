@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import styles from './SentimentPanel.module.css';
 
 interface TweetData {
@@ -53,32 +53,32 @@ export default function SentimentPanel({ symbol }: SentimentPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    const fetchSentiment = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const response = await fetch(`/api/twitter?symbol=${symbol}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch sentiment data');
-        }
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        console.error('Sentiment fetch error:', err);
-        setError('Unable to load Twitter sentiment');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchSentiment = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
+    try {
+      const response = await fetch(`/api/twitter?symbol=${symbol}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch sentiment data');
+      }
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      console.error('Sentiment fetch error:', err);
+      setError('Unable to load Twitter sentiment');
+    } finally {
+      setLoading(false);
+    }
+  }, [symbol]);
+
+  useEffect(() => {
     fetchSentiment();
-    
+
     // 每5分钟刷新一次
     const interval = setInterval(fetchSentiment, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [symbol]);
+  }, [fetchSentiment]);
 
   if (loading) {
     return (
@@ -122,7 +122,7 @@ export default function SentimentPanel({ symbol }: SentimentPanelProps) {
         <span className={styles.title}>Twitter Sentiment</span>
         <button 
           className={styles.refreshBtn}
-          onClick={() => window.location.reload()}
+          onClick={() => void fetchSentiment()}
           title="Refresh"
         >
           🔄
