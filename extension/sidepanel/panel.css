@@ -184,6 +184,39 @@ body {
   margin-bottom: 16px;
 }
 
+.nofomo-section {
+  margin-bottom: 16px;
+}
+
+.nofomo-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nofomo-top {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nofomo-reasons {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.nofomo-actions {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .intent-title {
   font-size: 12px;
   color: var(--text-secondary);

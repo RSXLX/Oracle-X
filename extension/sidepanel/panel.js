@@ -8,7 +8,11 @@ const state = {
   recognizeResult: null,
   selectedIntent: null,
   analysisText: '',
-  status: 'idle' // idle | recognizing | recognized | analyzing | complete | error
+  status: 'idle', // idle | recognizing | recognized | analyzing | complete | error
+  noFomoDecision: null,
+  noFomoCountdown: null,
+  noFomoRemaining: 0,
+  pendingAnalyzePayload: null,
 };
 
 // DOM 元素
@@ -22,6 +26,11 @@ const elements = {
   longBtn: document.getElementById('longBtn'),
   shortBtn: document.getElementById('shortBtn'),
   analyzeOnlyBtn: document.getElementById('analyzeOnlyBtn'),
+  noFomoSection: document.getElementById('noFomoSection'),
+  noFomoContent: document.getElementById('noFomoContent'),
+  noFomoActions: document.getElementById('noFomoActions'),
+  noFomoProceedBtn: document.getElementById('noFomoProceedBtn'),
+  noFomoCancelBtn: document.getElementById('noFomoCancelBtn'),
   scoreSection: document.getElementById('scoreSection'),
   scoreArc: document.getElementById('scoreArc'),
   scoreValue: document.getElementById('scoreValue'),
@@ -44,6 +53,8 @@ function init() {
   elements.longBtn.addEventListener('click', () => handleIntentSelect('LONG'));
   elements.shortBtn.addEventListener('click', () => handleIntentSelect('SHORT'));
   elements.analyzeOnlyBtn.addEventListener('click', () => handleIntentSelect('ANALYZE'));
+  elements.noFomoProceedBtn.addEventListener('click', continueToAnalysis);
+  elements.noFomoCancelBtn.addEventListener('click', cancelNoFomoFlow);
   
   // 监听来自 Service Worker 的消息
   chrome.runtime.onMessage.addListener(handleMessage);
@@ -198,46 +209,153 @@ async function handleIntentSelect(intent) {
   state.selectedIntent = intent;
   state.status = 'analyzing';
   state.analysisText = '';
-  
-  // 隐藏意图按钮，显示分析区域
+
+  const result = state.recognizeResult;
+  const symbol = (result?.pair || 'BTCUSDT').replace('/', '');
+  const direction = intent === 'LONG' ? 'LONG' : intent === 'SHORT' ? 'SHORT' : 'LONG';
+
+  state.pendingAnalyzePayload = {
+    symbol,
+    direction,
+    marketData: {
+      price: '0',
+      change24h: '0',
+      volume: '0',
+      high24h: '0',
+      low24h: '0',
+      fearGreedIndex: null,
+      fearGreedLabel: null,
+      klines: null,
+    }
+  };
+
   elements.intentSection.classList.add('hidden');
+  elements.noFomoSection.classList.remove('hidden');
+  elements.noFomoActions.classList.add('hidden');
+  elements.noFomoContent.innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>正在计算 NoFOMO 风险...</span>
+    </div>
+  `;
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'GET_NOFOMO_DECISION',
+      data: { symbol, direction }
+    });
+
+    if (!response?.success) {
+      showStatus(`NoFOMO 决策失败：${response?.error || 'unknown error'}`, response?.code, response?.requestId);
+      continueToAnalysis();
+      return;
+    }
+
+    const decision = response.data?.decision;
+    state.noFomoDecision = decision;
+    renderNoFomoDecision(decision);
+  } catch (error) {
+    showStatus(`NoFOMO 决策失败：${error?.message || 'unknown error'}`);
+    continueToAnalysis();
+  }
+}
+
+function startAnalysisFlow() {
+  const payload = state.pendingAnalyzePayload;
+  if (!payload) return;
+
   elements.scoreSection.classList.remove('hidden');
   elements.analysisSection.classList.remove('hidden');
-  
-  // 重置分析内容
+  elements.noFomoSection.classList.add('hidden');
+
   elements.analysisContent.innerHTML = `
     <div class="loading-state">
       <div class="spinner"></div>
       <span>AI 正在分析...</span>
     </div>
   `;
-  
-  // 构建分析请求
-  const result = state.recognizeResult;
-  const symbol = (result?.pair || 'BTCUSDT').replace('/', '');
-  const direction = intent === 'LONG' ? 'LONG' : intent === 'SHORT' ? 'SHORT' : 'LONG';
-  
-  // 发送分析请求到 Service Worker
+
   chrome.runtime.sendMessage({
     type: 'START_ANALYSIS',
-    data: {
-      symbol,
-      direction,
-      marketData: {
-        price: '0', // 将由后端获取实际数据
-        change24h: '0',
-        volume: '0',
-        high24h: '0',
-        low24h: '0',
-        fearGreedIndex: null,
-        fearGreedLabel: null,
-        klines: null
-      }
-    }
+    data: payload,
   });
 
-  // 获取 Twitter 情绪
-  fetchAndRenderTwitterSentiment(symbol);
+  fetchAndRenderTwitterSentiment(payload.symbol);
+}
+
+function renderNoFomoDecision(decision) {
+  if (!decision) {
+    continueToAnalysis();
+    return;
+  }
+
+  const actionColor = decision.action === 'BLOCK'
+    ? 'var(--accent-red)'
+    : decision.action === 'WARN'
+      ? 'var(--accent-yellow)'
+      : 'var(--accent-green)';
+
+  elements.noFomoContent.innerHTML = `
+    <div class="nofomo-top" style="border-left: 3px solid ${actionColor}">
+      <div><strong>决策：</strong>${decision.action}</div>
+      <div><strong>Impulse Score：</strong>${decision.impulseScore}</div>
+      <div><strong>冷静倒计时：</strong>${decision.coolingSeconds}s</div>
+    </div>
+    <ul class="nofomo-reasons">
+      ${(decision.reasons || []).map((r) => `<li>${r}</li>`).join('')}
+    </ul>
+  `;
+
+  if (decision.action === 'ALLOW') {
+    startAnalysisFlow();
+    return;
+  }
+
+  elements.noFomoActions.classList.remove('hidden');
+
+  if (decision.coolingSeconds > 0) {
+    state.noFomoRemaining = decision.coolingSeconds;
+    elements.noFomoProceedBtn.disabled = true;
+    elements.noFomoProceedBtn.textContent = `冷静中 ${state.noFomoRemaining}s`;
+
+    clearInterval(state.noFomoCountdown);
+    state.noFomoCountdown = setInterval(() => {
+      state.noFomoRemaining -= 1;
+      if (state.noFomoRemaining <= 0) {
+        clearInterval(state.noFomoCountdown);
+        state.noFomoCountdown = null;
+        elements.noFomoProceedBtn.disabled = false;
+        elements.noFomoProceedBtn.textContent = '继续分析';
+      } else {
+        elements.noFomoProceedBtn.textContent = `冷静中 ${state.noFomoRemaining}s`;
+      }
+    }, 1000);
+  } else {
+    elements.noFomoProceedBtn.disabled = false;
+    elements.noFomoProceedBtn.textContent = '继续分析';
+  }
+}
+
+function continueToAnalysis() {
+  clearInterval(state.noFomoCountdown);
+  state.noFomoCountdown = null;
+  elements.noFomoActions.classList.add('hidden');
+  startAnalysisFlow();
+}
+
+function cancelNoFomoFlow() {
+  clearInterval(state.noFomoCountdown);
+  state.noFomoCountdown = null;
+  state.pendingAnalyzePayload = null;
+  state.noFomoDecision = null;
+
+  elements.noFomoSection.classList.add('hidden');
+  elements.intentSection.classList.remove('hidden');
+  elements.scoreSection.classList.add('hidden');
+  elements.analysisSection.classList.add('hidden');
+  elements.twitterSection.classList.add('hidden');
+  elements.conclusionSection.classList.add('hidden');
+  elements.analysisContent.innerHTML = '';
 }
 
 /**

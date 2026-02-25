@@ -179,6 +179,40 @@ async function callConfigStatusAPI() {
   return await response.json();
 }
 
+async function callTickerAPI(symbol) {
+  const apiBaseUrl = await getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}/api/ticker?symbol=${symbol}`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw parseApiError(error, 'Ticker fetch failed');
+  }
+
+  return await response.json();
+}
+
+async function callDecisionAPI(symbol, direction, marketData) {
+  const apiBaseUrl = await getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}/api/decision`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      symbol,
+      direction,
+      marketData
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw parseApiError(error, 'Decision fetch failed');
+  }
+
+  return await response.json();
+}
+
 /**
  * 监听来自 Side Panel 的消息
  */
@@ -209,6 +243,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     callConfigStatusAPI()
       .then(result => sendResponse({ success: true, data: result }))
       .catch(error => sendResponse({ success: false, error: error.message, code: error.code, requestId: error.requestId }));
+    return true;
+  }
+
+  if (message.type === 'GET_NOFOMO_DECISION') {
+    const { symbol, direction } = message.data || {};
+    callTickerAPI(symbol)
+      .then((ticker) => {
+        const marketData = {
+          price: ticker?.lastPrice || '0',
+          change24h: ticker?.priceChangePercent || '0',
+          volume: ticker?.volume || '0',
+          high24h: ticker?.highPrice || '0',
+          low24h: ticker?.lowPrice || '0',
+          fearGreedIndex: null,
+          fearGreedLabel: null,
+          klines: null,
+        };
+        return callDecisionAPI(symbol, direction || 'LONG', marketData);
+      })
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message, code: error.code, requestId: error.requestId }));
     return true;
   }
   
