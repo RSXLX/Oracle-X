@@ -6,6 +6,7 @@
 import { NextRequest } from 'next/server';
 import { getVisionConfig, callVisionAI } from '@/lib/ai-client';
 import { errorResponse, getRequestId } from '@/lib/api-error';
+import { checkRateLimit, getClientKey } from '@/lib/rate-limit';
 
 export const runtime = 'edge';
 
@@ -37,6 +38,12 @@ const RECOGNIZE_PROMPT = `你是一个专业的交易界面识别专家。请分
 
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
+
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const limit = checkRateLimit(getClientKey(clientIp, '/api/recognize'), 30, 60_000);
+  if (!limit.allowed) {
+    return errorResponse(429, 'RATE_LIMITED', 'Too many requests', requestId, 'Rate limit exceeded');
+  }
 
   try {
     let body: { image?: string };

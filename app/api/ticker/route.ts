@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { errorResponse, getRequestId } from '@/lib/api-error';
+import { checkRateLimit, getClientKey } from '@/lib/rate-limit';
 
 const BINANCE_API_BASE = 'https://api.binance.com/api/v3';
 
@@ -7,6 +8,12 @@ export async function GET(request: NextRequest) {
   const requestId = getRequestId(request);
   const searchParams = request.nextUrl.searchParams;
   const symbol = searchParams.get('symbol');
+
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const limit = checkRateLimit(getClientKey(clientIp, '/api/ticker'), 120, 60_000);
+  if (!limit.allowed) {
+    return errorResponse(429, 'RATE_LIMITED', 'Too many requests', requestId, 'Rate limit exceeded');
+  }
 
   if (!symbol) {
     return errorResponse(400, 'INVALID_PARAMETERS', 'Missing parameters', requestId, 'symbol is required');

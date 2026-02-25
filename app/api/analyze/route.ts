@@ -11,6 +11,7 @@ import { getTwitterSentiment } from '@/lib/twitter';
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/prompt-builder';
 import { getAIConfig, callAIStream, transformToSSE } from '@/lib/ai-client';
 import { errorResponse, getRequestId } from '@/lib/api-error';
+import { checkRateLimit, getClientKey } from '@/lib/rate-limit';
 import { ProxyAgent, fetch as proxyFetch } from 'undici';
 
 export const runtime = 'nodejs';
@@ -20,6 +21,12 @@ const AI_TIMEOUT_MS = 45000;
 
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
+
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const limit = checkRateLimit(getClientKey(clientIp, '/api/analyze'), 20, 60_000);
+  if (!limit.allowed) {
+    return errorResponse(429, 'RATE_LIMITED', 'Too many requests', requestId, 'Rate limit exceeded');
+  }
 
   try {
     let body: unknown;
