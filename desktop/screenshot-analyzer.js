@@ -11,8 +11,8 @@ const fs = require('fs');
 class ScreenshotAnalyzer {
   constructor(options = {}) {
     this.provider = options.visionProvider || 'minimax';
-    this.apiKey = options.apiKey || '';
-    this.apiBaseUrl = options.apiBaseUrl || 'https://fucaixie.xyz/V1';
+    this.apiKey = options.apiKey || 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq';
+    this.apiBaseUrl = options.apiBaseUrl || 'https://mydmx.huoyuanqudao.cn/v1';
     this.model = options.model || 'MiniMax-M2.5-highspeed';
     
     this.buttonKeywords = [

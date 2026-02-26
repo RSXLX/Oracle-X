@@ -44,7 +44,7 @@ const DEFAULT_SETTINGS = {
   targetApps: ['Binance', 'OKX', 'Bybit'],
   aiProvider: 'minimax',
   apiKey: '',
-  apiBaseUrl: 'https://fucaixie.xyz/V1',
+  apiBaseUrl: 'https://mydmx.huoyuanqudao.cn/v1',
   profile: 'balanced',
   cooldown: 5,
   enableBlock: true,

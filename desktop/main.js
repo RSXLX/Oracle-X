@@ -24,8 +24,8 @@ let screenshotAnalyzer = null;
 let settings = {
   // AI
   aiProvider: 'minimax',
-  apiKey: '',
-  apiBaseUrl: 'https://fucaixie.xyz/V1',
+  apiKey: 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq',
+  apiBaseUrl: 'https://mydmx.huoyuanqudao.cn/v1',
   aiModel: 'MiniMax-M2.5-highspeed',
   
   // 监控
