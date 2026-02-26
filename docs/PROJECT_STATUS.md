@@ -1,47 +1,26 @@
-# Oracle-X 项目进度（2026-02-25）
+# Oracle-X 项目进度（2026-02-26 18:10）
 
-## 本轮新增（2026-02-26 14:45）
+## 本轮新增（2026-02-26 18:10）
 
-- 完成 NoFOMO 决策日志模块：`lib/decision-log.ts`
-  - JSONL 持久化 append/read
-  - 按 `process.cwd()` 动态解析路径，修复测试隔离问题
-- 完成日志读取 API：`GET /api/decision-log`
-  - 增加 `limit` 校验（1-500）
-  - 返回 `requestId` 与 `X-Request-Id`
-- 完成决策写入链路：`POST /api/decision` 写入决策日志
-- 新增最小回归测试：`lib/decision-log.test.ts`
-- 新增日志审计页面：`/decision-log`
-  - 列表、limit 切换、空态、错误态、基础统计
-- `.gitignore` 已忽略本地运行数据目录：`/data/`
+- 新增日志模块 `lib/logger.ts`
+  - 统一日志接口（debug/info/warn/error）
+  - 生产环境过滤 debug
+- 完成 console.* 替换为 logger
+- 移除 broken test 文件 `lib/health.test.ts`
+- Decision Log 页面增强
+  - 筛选（交易对、动作）
+  - 导出 JSON/CSV
+  - 复盘指标（拦截率、风险化解率）
 
-## 本轮新增（2026-02-26 凌晨）
+## 当前状态
 
-- 新增 `NoFOMO` 决策引擎：`lib/no-fomo.ts`
-- 新增产品化决策接口：`POST /api/decision`
-  - 输出 `ALLOW / WARN / BLOCK`
-  - 输出 `impulseScore / coolingSeconds / reasons`
-- 新增 Desktop 壳（Electron）：`desktop/`
-  - 本地设置管理（API URL / 风险档位 / 强制阻断开关）
-  - 可通过 `npm run desktop:install && npm run desktop:dev` 启动
-
-## 本轮新增（2026-02-25 晚）
-
-- 已按要求配置本地 `.env.local`：
-  - `AI_BASE_URL=https://fucaixie.xyz/V1`（代码层自动兼容为 `/v1`）
-  - `AI_MODEL=MiniMax M2.5-hignspeed`
-  - `STEP_API_KEY` 已写入本地环境文件
-- 已验证网关连通性（`/v1/models` 可访问）
-- 已新增演示清单：`docs/DEMO_CHECKLIST.md`
-
-## 当前状态总览
-
-- **仓库状态**：已从 `https://github.com/RSXLX/Oracle-X` 拉取到本地
 - **分支**：`main`
 - **最近提交**：
-  - `61fe6ac` submited
-  - `2fc3c60` feat(oracle-x): 初始化 Oracle-X AI 交易决策辅助系统
+  - `c1db1e8` chore: replace console with logger, remove broken test
+  - `6f73f36` feat(product): add filters, export, and metrics to decision log page
+  - `3a6662f` feat(desktop): add config health and decision-log live preview panels
 
-## 已实现能力（代码已存在）
+## 已实现能力
 
 ### 前端（Next.js）
 - 实时价格/K线展示（含时间周期切换）
@@ -49,56 +28,50 @@
 - 交易前 AI 分析弹窗（流式文本展示）
 - 风险结论 Badge（高/中/低风险）
 - Twitter 情绪面板（可展开查看推文）
+- **Decision Log 看板**（新增筛选/导出/指标）
 
 ### 后端 API
 - `POST /api/analyze`：参数校验、K线聚合、指标计算、Prompt 构建、AI 流式返回
 - `POST /api/recognize`：截图识别交易平台/交易对
 - `GET /api/klines`、`GET /api/ticker`：Binance 代理
 - `GET /api/twitter`：Twitter 情绪接口封装
+- `POST /api/decision`：NoFOMO 决策（ALLOW/WARN/BLOCK）
+- `GET /api/decision-log`：决策日志审计
 
 ### Chrome Extension
 - 点击扩展图标触发截图
 - Side Panel 展示识别结果
 - 用户选择 LONG/SHORT 后触发分析
 - 流式接收分析结果并渲染
+- NoFOMO 冷静层
 
-## 本轮已推进项
+### Desktop 壳
+- 本地设置管理（API URL / 风险档位 / 强制阻断开关）
+- 配置健康检查面板
+- 决策日志预览
 
-1. **工程可运行性检查完成**
-   - `npm install` ✅
-   - `npm run type-check` ✅
-   - `npm run build` ✅
+## 工程状态
 
-2. **修复 ESLint 配置阻断问题**
-   - 原配置引用 `next/typescript` 导致 lint/build 阶段报错
-   - 已调整为 `next/core-web-vitals`，确保 lint 可执行
+- `npm run lint` ✅
+- `npm run type-check` ✅
+- `npm run build` ✅
 
-3. **修复 Twitter 面板类型兼容问题**
-   - 对推文字段做可选兼容（`authorHandle/metrics/createdAt`）
-   - 避免因后端字段缺失导致前端渲染异常
-
-4. **主页恢复 Twitter 情绪面板挂载**
-   - `app/page.tsx` 中已启用 `SentimentPanel`
-
-## 当前剩余问题（待继续）
+## 当前剩余问题
 
 ### P0（优先）
-- 清理调试日志（`console.*`）或规范 logger，消除 lint warning
-- 给扩展增加可配置 API 地址（当前 `background.js` 写死 `http://localhost:3000`）
-- 补充最小化回归测试（关键 API + 核心 Hook）
+- ~~console.* 日志清理~~ ✅ 已完成
+- ~~broken test 清理~~ ✅ 已完成
 
 ### P1（增强）
-- `/api/analyze` 输出更结构化的阶段事件（market/indicator/score/done）
-- Side Panel 增加“分析阶段”可视化（对齐需求文档）
-- 完善错误态文案与重试策略（识别失败、网络超时、AI 超时）
+- `/api/analyze` 输出更结构化的阶段事件
+- Side Panel 增加“分析阶段”可视化
+- 完善错误态文案与重试策略
 
 ### P2（交付）
-- 增加部署文档中的“一键本地验收清单”
-- 打包 extension release 版本（含版本号与变更记录）
+- 部署文档“一键本地验收清单”
+- 打包 extension release 版本
 
 ## 建议下一步
 
-优先进入 **P0 收敛阶段**：
-1) 完成 API 地址可配置；
-2) 清理 warning；
-3) 补最小验收测试并出一个可演示版本标签。
+1. 完成 P1 增强项
+2. 准备 release 版本标签
