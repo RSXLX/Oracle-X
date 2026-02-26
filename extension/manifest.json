@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Oracle-X",
   "version": "1.0.0",
-  "description": "AI-powered crypto trading risk analyzer - Analyze before you trade",
+  "description": "AI-powered crypto trading FOMO checker - Check before you trade",
   
   "permissions": [
     "activeTab",
@@ -20,13 +20,32 @@
       "48": "icons/icon48.svg",
       "128": "icons/icon128.svg"
     },
-    "default_title": "Oracle-X - Analyze Trading Screenshot"
+    "default_title": "Oracle-X - FOMO Check"
   },
   
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.binance.com/*",
+        "*://*.okx.com/*",
+        "*://*.bybit.com/*",
+        "*://*.coinbase.com/*",
+        "*://*.kraken.com/*",
+        "*://*.huobi.com/*",
+        "*://*.gate.io/*",
+        "*://*.uniswap.org/*",
+        "*://app.uniswap.org/*"
+      ],
+      "js": ["content/content.js"],
+      "css": ["content/styles.css"],
+      "run_at": "document_end"
+    }
+  ],
   
   "commands": {
     "_execute_action": {
@@ -45,6 +64,16 @@
   },
   
   "host_permissions": [
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "http://localhost:3001/*",
+    "*://*.binance.com/*",
+    "*://*.okx.com/*",
+    "*://*.bybit.com/*",
+    "*://*.coinbase.com/*",
+    "*://*.kraken.com/*",
+    "*://*.huobi.com/*",
+    "*://*.gate.io/*",
+    "*://*.uniswap.org/*",
+    "*://app.uniswap.org/*"
   ]
 }

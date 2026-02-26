@@ -1,0 +1,140 @@
+/* Oracle-X Content Script Styles - Blocker Modal */
+
+#oraclex-blocker-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.oraclex-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.oraclex-modal-content {
+  background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.oraclex-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #30363d;
+}
+
+.oraclex-icon {
+  font-size: 32px;
+}
+
+.oraclex-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.oraclex-modal-body {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.oraclex-platform {
+  font-size: 16px;
+  color: #8b949e;
+  margin-bottom: 16px;
+}
+
+.oraclex-countdown {
+  font-size: 48px;
+  font-weight: 700;
+  color: #58a6ff;
+  margin: 20px 0;
+}
+
+.oraclex-progress {
+  width: 100%;
+  height: 6px;
+  background: #21262d;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.oraclex-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #238636, #2ea043);
+  border-radius: 3px;
+  transition: width 1s ease;
+  width: 0%;
+}
+
+.oraclex-modal-footer {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.oraclex-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.oraclex-btn-primary {
+  background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+  color: white;
+}
+
+.oraclex-btn-primary:hover {
+  background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
+}
+
+.oraclex-btn-primary:disabled {
+  background: #21262d;
+  color: #484f58;
+  cursor: not-allowed;
+}
+
+.oraclex-btn-secondary {
+  background: #21262d;
+  color: #8b949e;
+}
+
+.oraclex-btn-secondary:hover {
+  background: #30363d;
+  color: #e6edf3;
+}
+
+/* Animation */
+@keyframes oraclex-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.oraclex-icon {
+  animation: oraclex-pulse 2s ease-in-out infinite;
+}
