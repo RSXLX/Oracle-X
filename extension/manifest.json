@@ -41,7 +41,7 @@
         "*://*.uniswap.org/*",
         "*://app.uniswap.org/*"
       ],
-      "js": ["content/platforms.js", "content/vision-analyzer.js", "content/content.js"],
+      "js": ["content/storage.js", "content/platforms.js", "content/vision-analyzer.js", "content/content.js"],
       "css": ["content/styles.css"],
       "run_at": "document_end"
     }
