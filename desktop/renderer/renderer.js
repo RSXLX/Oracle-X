@@ -139,6 +139,55 @@ document.getElementById('refreshWalletBtn')?.addEventListener('click', () => {
   }
 });
 
+
+// CSV Import
+async function importCSV() {
+  try {
+    const result = await window.oracleDesktop.importCSV();
+    
+    if (result.error) {
+      document.getElementById('csvStatus').innerHTML = '<span class="error">' + result.error + '</span>';
+      return;
+    }
+    
+    document.getElementById('csvStatus').innerHTML = '<span class="success">已导入 ' + result.count + ' 笔交易</span>';
+    
+    // 显示分析
+    if (result.analysis && !result.analysis.error) {
+      const a = result.analysis;
+      const stats = a.stats || {};
+      document.getElementById('csvAnalysis').innerHTML = `
+        <div class="stats-grid">
+          <div class="stat"><span class="stat-label">交易次数</span><span class="stat-value">${stats.totalTrades || 0}</span></div>
+          <div class="stat"><span class="stat-label">交易风格</span><span class="stat-value">${a.style || 'unknown'}</span></div>
+          <div class="stat"><span class="stat-label">风险等级</span><span class="stat-value">${a.riskLevel || 'low'}</span></div>
+          <div class="stat"><span class="stat-label">交易币种</span><span class="stat-value">${stats.uniqueSymbols || 0}</span></div>
+        </div>
+        ${a.insights ? '<div class="insights">' + a.insights.map(i => '<div class="insight-' + i.type + '">' + i.text + '</div>').join('') + '</div>' : ''}
+      `;
+    }
+    
+    // 显示交易明细
+    const tbody = document.getElementById('csvTbody');
+    if (result.transactions?.length) {
+      tbody.innerHTML = result.transactions.slice(0, 50).map(tx => `
+        <tr>
+          <td>${tx.timestamp || '-'}</td>
+          <td>${tx.symbol || '-'}</td>
+          <td><span class="badge badge-${tx.isBuy ? 'allow' : 'block'}">${tx.isBuy ? '买入' : '卖出'}</span></td>
+          <td>${tx.price?.toFixed(2) || '-'}</td>
+          <td>${tx.qty?.toFixed(4) || '-'}</td>
+          <td>${tx.total?.toFixed(2) || '-'}</td>
+        </tr>
+      `).join('');
+    }
+  } catch (err) {
+    document.getElementById('csvStatus').innerHTML = '<span class="error">' + err.message + '</span>';
+  }
+}
+
+document.getElementById('importCSVBtn')?.addEventListener('click', importCSV);
+
 // Initialize
 (async () => {
   await loadSettings();

@@ -1,8 +1,8 @@
 /**
- * Oracle-X Desktop - Main Process (完整版 + 钱包)
+ * Oracle-X Desktop - Main Process (完整版 + 钱包 + CSV)
  */
 
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, dialog } = require('electron');
 const path = require('path');
 const { GlobalAppMonitor, MONITOR_MODES } = require('./monitor');
 const { ScreenshotAnalyzer } = require('./screenshot-analyzer');
@@ -10,6 +10,7 @@ const { TrayManager } = require('./tray-manager');
 const { AutoStartManager } = require('./auto-start');
 const { NotificationManager } = require('./notification-manager');
 const { WalletAnalyzer } = require('./wallet-analyzer');
+const { CSVTradeImporter } = require('./csv-importer');
 
 const isDev = process.env.NODE_ENV !== 'production';
 const PORT = isDev ? 3000 : 3000;
@@ -21,6 +22,7 @@ let notificationManager = null;
 let monitor = null;
 let screenshotAnalyzer = null;
 let walletAnalyzer = null;
+let csvImporter = null;
 
 let settings = {
   aiProvider: 'minimax',
@@ -41,10 +43,10 @@ function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   
   mainWindow = new BrowserWindow({
-    width: Math.min(900, width * 0.8),
-    height: Math.min(800, height * 0.9),
-    minWidth: 600,
-    minHeight: 500,
+    width: Math.min(1000, width * 0.85),
+    height: Math.min(900, height * 0.9),
+    minWidth: 700,
+    minHeight: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -81,13 +83,7 @@ function initManagers() {
   if (settings.autoStart) autoStartManager.enable();
 
   walletAnalyzer = new WalletAnalyzer();
-  
-  // 添加默认钱包（如有配置）
-  if (settings.wallets) {
-    for (const w of settings.wallets) {
-      walletAnalyzer.addWallet(w.address, w.chain, w.label);
-    }
-  }
+  csvImporter = new CSVTradeImporter();
 
   monitor = new GlobalAppMonitor({
     mode: settings.monitorMode,
@@ -140,7 +136,7 @@ function setupIPC() {
     settings = { ...settings, ...newSettings };
     if (monitor) { monitor.targetApps = settings.targetApps; monitor.mode = settings.monitorMode; }
     if (screenshotAnalyzer) screenshotAnalyzer.configure({ visionProvider: settings.aiProvider, apiKey: settings.apiKey, apiBaseUrl: settings.apiBaseUrl, model: settings.aiModel });
-    if (autoStartManager && settings.autoStart !== (settings.autoStart || false)) autoStartManager.toggle(settings.autoStart);
+    if (autoStartManager && settings.autoStart) autoStartManager.toggle(settings.autoStart);
     if (notificationManager) notificationManager.setEnabled(settings.notifications);
     return true;
   });
@@ -156,21 +152,33 @@ function setupIPC() {
   });
 
   // Wallet
-  ipcMain.handle('addWallet', (event, address, chain, label) => {
-    return walletAnalyzer.addWallet(address, chain, label);
-  });
-  
-  ipcMain.handle('getWallets', () => {
-    return walletAnalyzer.getWallets();
-  });
-  
-  ipcMain.handle('getWalletTransactions', async (event, address, chain, limit = 50) => {
-    return await walletAnalyzer.fetchTransactions(address, chain, limit);
-  });
-  
+  ipcMain.handle('addWallet', (event, address, chain, label) => walletAnalyzer.addWallet(address, chain, label));
+  ipcMain.handle('getWallets', () => walletAnalyzer.getWallets());
+  ipcMain.handle('getWalletTransactions', async (event, address, chain, limit = 50) => await walletAnalyzer.fetchTransactions(address, chain, limit));
   ipcMain.handle('analyzeWallet', async (event, address, chain) => {
     const txs = await walletAnalyzer.fetchTransactions(address, chain, 100);
     return walletAnalyzer.analyzePattern(txs);
+  });
+
+  // CSV Import
+  ipcMain.handle('importCSV', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择 CSV 文件',
+      filters: [{ name: 'CSV Files', extensions: ['csv'] }],
+      properties: ['openFile'],
+    });
+
+    if (result.canceled || !result.filePaths[0]) {
+      return { error: 'Cancelled' };
+    }
+
+    try {
+      const importResult = await csvImporter.parseCSV(result.filePaths[0]);
+      const analysis = csvImporter.analyzePattern(importResult.transactions);
+      return { ...importResult, analysis };
+    } catch (err) {
+      return { error: err.message };
+    }
   });
 
   // Screenshot
@@ -182,7 +190,7 @@ function setupIPC() {
     });
   });
 
-  // Window controls
+  // Window
   ipcMain.handle('minimize', () => mainWindow?.minimize());
   ipcMain.handle('maximize', () => {
     if (mainWindow?.isMaximized()) mainWindow.unmaximize();
