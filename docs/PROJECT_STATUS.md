@@ -1,5 +1,19 @@
 # Oracle-X 项目进度（2026-02-25）
 
+## 本轮新增（2026-02-26 14:45）
+
+- 完成 NoFOMO 决策日志模块：`lib/decision-log.ts`
+  - JSONL 持久化 append/read
+  - 按 `process.cwd()` 动态解析路径，修复测试隔离问题
+- 完成日志读取 API：`GET /api/decision-log`
+  - 增加 `limit` 校验（1-500）
+  - 返回 `requestId` 与 `X-Request-Id`
+- 完成决策写入链路：`POST /api/decision` 写入决策日志
+- 新增最小回归测试：`lib/decision-log.test.ts`
+- 新增日志审计页面：`/decision-log`
+  - 列表、limit 切换、空态、错误态、基础统计
+- `.gitignore` 已忽略本地运行数据目录：`/data/`
+
 ## 本轮新增（2026-02-26 凌晨）
 
 - 新增 `NoFOMO` 决策引擎：`lib/no-fomo.ts`

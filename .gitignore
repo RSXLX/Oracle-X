@@ -63,3 +63,6 @@ $RECYCLE.BIN/
 *.tmp
 *.temp
 .cache/
+
+# Local runtime data
+/data/

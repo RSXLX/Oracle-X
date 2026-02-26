@@ -20,26 +20,32 @@ export interface DecisionLogItem {
   createdAt: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const LOG_FILE = path.join(DATA_DIR, 'decision-log.jsonl');
+function getStorePaths() {
+  const dataDir = path.join(process.cwd(), 'data');
+  const logFile = path.join(dataDir, 'decision-log.jsonl');
+  return { dataDir, logFile };
+}
 
 function ensureStore() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const { dataDir, logFile } = getStorePaths();
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
-  if (!fs.existsSync(LOG_FILE)) {
-    fs.writeFileSync(LOG_FILE, '', 'utf8');
+  if (!fs.existsSync(logFile)) {
+    fs.writeFileSync(logFile, '', 'utf8');
   }
 }
 
 export function appendDecisionLog(item: DecisionLogItem) {
   ensureStore();
-  fs.appendFileSync(LOG_FILE, `${JSON.stringify(item)}\n`, 'utf8');
+  const { logFile } = getStorePaths();
+  fs.appendFileSync(logFile, `${JSON.stringify(item)}\n`, 'utf8');
 }
 
 export function readDecisionLogs(limit = 50): DecisionLogItem[] {
   ensureStore();
-  const text = fs.readFileSync(LOG_FILE, 'utf8');
+  const { logFile } = getStorePaths();
+  const text = fs.readFileSync(logFile, 'utf8');
   const lines = text.split('\n').filter(Boolean);
   const parsed = lines
     .map((line) => {

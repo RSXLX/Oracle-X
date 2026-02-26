@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
       },
       createdAt: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('Failed to append decision log:', error);
+  } catch {
+    // 决策主流程不因日志失败而中断
   }
 
   return NextResponse.json(
