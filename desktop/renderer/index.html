@@ -10,8 +10,60 @@
     <main class="app">
       <header>
         <h1>🔮 Oracle-X NoFOMO</h1>
-        <p>交易前冷静层 · 智能决策中心</p>
+        <p>全局交易冷静层 · 任意应用监听</p>
       </header>
+
+      <!-- 监控模式 -->
+      <section class="card">
+        <h2>👁️ 全局监控设置</h2>
+        <p class="hint">选择监控模式，监听任意应用</p>
+        
+        <div class="form-group">
+          <label>监控模式
+            <select id="monitorMode">
+              <option value="accessibility">应用监听（推荐）</option>
+              <option value="screenshot">屏幕截图 AI 分析</option>
+              <option value="global_key">全局快捷键</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="source-section">
+          <h3>监听目标应用</h3>
+          <label class="checkbox">
+            <input type="checkbox" id="app_binance" checked />
+            Binance
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="app_okx" checked />
+            OKX
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="app_bybit" checked />
+            Bybit
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="app_coinbase" />
+            Coinbase
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="app_tradingview" />
+            TradingView
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="app_metatrader" />
+            MetaTrader
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="app_custom" />
+            自定义应用...
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>自定义应用名称 <input type="text" id="customApp" placeholder="如：Robinhood" /></label>
+        </div>
+      </section>
 
       <!-- AI API 配置 -->
       <section class="card">
@@ -22,7 +74,6 @@
               <option value="stepfun">阶跃星辰 (StepFun)</option>
               <option value="openai">OpenAI</option>
               <option value="gemini">Google Gemini</option>
-              <option value="custom">自定义 API</option>
             </select>
           </label>
         </div>
@@ -32,81 +83,16 @@
         <div class="form-group">
           <label>API Base URL <input type="text" id="apiBaseUrl" placeholder="https://api.stepfun.com/v1" /></label>
         </div>
-        <div class="form-group">
-          <label>Model <input type="text" id="aiModel" placeholder="step-1-8k" /></label>
-        </div>
       </section>
 
-      <!-- 数据源配置 -->
+      <!-- 冷静设置 -->
       <section class="card">
-        <h2>📊 数据源配置</h2>
-        <p class="hint">选择要接入的市场数据源和交易记录</p>
-        
-        <div class="source-section">
-          <h3>加密货币</h3>
-          <label class="checkbox">
-            <input type="checkbox" id="source_binance" checked />
-            Binance
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="source_bybit" />
-            Bybit
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="source_coingecko" checked />
-            CoinGecko（无需认证）
-          </label>
-        </div>
-
-        <div class="source-section">
-          <h3>股票</h3>
-          <label class="checkbox">
-            <input type="checkbox" id="source_alpaca" />
-            Alpaca（需要 API Key）
-          </label>
-          <div class="form-group">
-            <label>Alpaca API Key <input type="text" id="alpaca_key" placeholder="PKXXX" /></label>
-          </div>
-          <div class="form-group">
-            <label>Alpaca Secret <input type="password" id="alpaca_secret" placeholder="Secret" /></label>
-          </div>
-        </div>
-      </section>
-
-      <!-- 情绪源配置 -->
-      <section class="card">
-        <h2>💭 情绪源配置</h2>
-        <p class="hint">选择要分析的情绪数据源</p>
-        
-        <label class="checkbox">
-          <input type="checkbox" id="sentiment_coingecko" checked />
-          CoinGecko 社区情绪（无需认证）
-        </label>
-        <label class="checkbox">
-          <input type="checkbox" id="sentiment_twitter" />
-          Twitter/X（需要 API）
-        </label>
-        <div class="form-group">
-          <label>Twitter API Key <input type="password" id="twitter_key" placeholder="RapidAPI Key" /></label>
-        </div>
-        
-        <label class="checkbox">
-          <input type="checkbox" id="sentiment_news" />
-          News API
-        </label>
-        <div class="form-group">
-          <label>News API Key <input type="password" id="news_key" placeholder="API Key" /></label>
-        </div>
-      </section>
-
-      <!-- 拦截设置 -->
-      <section class="card">
-        <h2>⚙️ 拦截设置</h2>
+        <h2>⚙️ 冷静设置</h2>
         <div class="form-group">
           <label>风险档位
             <select id="profile">
-              <option value="conservative">保守 (冷静10秒)</option>
-              <option value="balanced">平衡 (冷静5秒)</option>
+              <option value="conservative">保守 (冷静15秒)</option>
+              <option value="balanced" selected>平衡 (冷静5秒)</option>
               <option value="aggressive">激进 (冷静3秒)</option>
             </select>
           </label>
@@ -116,11 +102,11 @@
         </div>
         <label class="checkbox">
           <input type="checkbox" id="enableBlock" checked />
-          启用高风险强制阻断
+          启用阻断弹窗
         </label>
         <label class="checkbox">
           <input type="checkbox" id="autoAnalyze" checked />
-          自动调用 AI 分析
+          自动 AI 分析
         </label>
       </section>
 
@@ -142,17 +128,17 @@
         <button id="resetBtn" class="btn btn-secondary">恢复默认</button>
       </section>
 
-      <!-- 实时监控 -->
+      <!-- 监控状态 -->
       <section class="card">
-        <h2>📊 实时监控</h2>
+        <h2>📊 监控状态</h2>
         <div class="stats-grid">
           <div class="stat">
-            <span class="stat-label">今日拦截</span>
-            <span class="stat-value" id="todayBlock">0</span>
+            <span class="stat-label">监控模式</span>
+            <span class="stat-value" id="monitorStatus">应用监听</span>
           </div>
           <div class="stat">
-            <span class="stat-label">今日分析</span>
-            <span class="stat-value" id="todayAnalyze">0</span>
+            <span class="stat-label">今日阻断</span>
+            <span class="stat-value" id="todayBlock">0</span>
           </div>
           <div class="stat">
             <span class="stat-label">风险化解</span>
@@ -170,15 +156,13 @@
             <thead>
               <tr>
                 <th>时间</th>
-                <th>交易对</th>
-                <th>方向</th>
+                <th>应用</th>
                 <th>动作</th>
-                <th>Impulse</th>
-                <th>24h%</th>
+                <th>结果</th>
               </tr>
             </thead>
             <tbody id="logTbody">
-              <tr><td colspan="6" class="muted">暂无数据</td></tr>
+              <tr><td colspan="4" class="muted">暂无数据</td></tr>
             </tbody>
           </table>
         </div>
