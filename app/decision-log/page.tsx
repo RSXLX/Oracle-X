@@ -41,6 +41,8 @@ export default function DecisionLogPage() {
   const [limit, setLimit] = useState(50);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filterSymbol, setFilterSymbol] = useState('');
+  const [filterAction, setFilterAction] = useState('');
 
   const fetchLogs = useCallback(async (nextLimit = limit) => {
     setLoading(true);
@@ -61,13 +63,59 @@ export default function DecisionLogPage() {
     void fetchLogs(limit);
   }, [limit, fetchLogs]);
 
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      if (filterSymbol && !item.symbol.toLowerCase().includes(filterSymbol.toLowerCase())) return false;
+      if (filterAction && item.decision.action !== filterAction) return false;
+      return true;
+    });
+  }, [items, filterSymbol, filterAction]);
+
   const stats = useMemo(() => {
-    const total = items.length;
-    const allow = items.filter((x) => x.decision.action === 'ALLOW').length;
-    const warn = items.filter((x) => x.decision.action === 'WARN').length;
-    const block = items.filter((x) => x.decision.action === 'BLOCK').length;
-    return { total, allow, warn, block };
-  }, [items]);
+    const total = filteredItems.length;
+    const allow = filteredItems.filter((x) => x.decision.action === 'ALLOW').length;
+    const warn = filteredItems.filter((x) => x.decision.action === 'WARN').length;
+    const block = filteredItems.filter((x) => x.decision.action === 'BLOCK').length;
+    const blockRate = total > 0 ? Math.round((block / total) * 100) : 0;
+    const riskMitigated = block + warn;
+    const mitigationRate = total > 0 ? Math.round((riskMitigated / total) * 100) : 0;
+    return { total, allow, warn, block, blockRate, mitigationRate };
+  }, [filteredItems]);
+
+  const handleExport = useCallback((format: 'json' | 'csv') => {
+    const data = filteredItems;
+    let content: string;
+    let mime: string;
+    let filename: string;
+    if (format === 'json') {
+      content = JSON.stringify(data, null, 2);
+      mime = 'application/json';
+      filename = `oraclex-decisions-${Date.now()}.json`;
+    } else {
+      const headers = ['时间', '交易对', '方向', '动作', 'Impulse', '置信度', '冷静(s)', '24h%', '原因'];
+      const rows = data.map(item => [
+        new Date(item.createdAt).toLocaleString(),
+        item.symbol,
+        item.direction,
+        item.decision.action,
+        item.decision.impulseScore,
+        item.decision.confidence,
+        item.decision.coolingSeconds,
+        item.marketData.change24h,
+        (item.decision.reasons || []).join('; ')
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+      content = [headers.join(','), ...rows].join('\n');
+      mime = 'text/csv';
+      filename = `oraclex-decisions-${Date.now()}.csv`;
+    }
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [filteredItems]);
 
   return (
     <main className={styles.page}>
@@ -84,14 +132,34 @@ export default function DecisionLogPage() {
         </div>
       </header>
 
+      <section className={styles.filters}>
+        <input
+          type="text"
+          placeholder="搜索交易对..."
+          value={filterSymbol}
+          onChange={e => setFilterSymbol(e.target.value)}
+          className={styles.filterInput}
+        />
+        <select value={filterAction} onChange={e => setFilterAction(e.target.value)} className={styles.filterSelect}>
+          <option value="">全部动作</option>
+          <option value="ALLOW">ALLOW</option>
+          <option value="WARN">WARN</option>
+          <option value="BLOCK">BLOCK</option>
+        </select>
+        <button onClick={() => handleExport('json')} className={styles.exportBtn}>导出 JSON</button>
+        <button onClick={() => handleExport('csv')} className={styles.exportBtn}>导出 CSV</button>
+      </section>
+
       <section className={styles.kpis}>
         <div className={styles.kpi}><span>Total</span><strong>{stats.total}</strong></div>
         <div className={styles.kpi}><span>ALLOW</span><strong>{stats.allow}</strong></div>
         <div className={styles.kpi}><span>WARN</span><strong>{stats.warn}</strong></div>
         <div className={styles.kpi}><span>BLOCK</span><strong>{stats.block}</strong></div>
+        <div className={`${styles.kpi} ${styles.highlight}`}><span>拦截率</span><strong>{stats.blockRate}%</strong></div>
+        <div className={`${styles.kpi} ${styles.highlight}`}><span>风险化解</span><strong>{stats.mitigationRate}%</strong></div>
         <label className={styles.limitCtl}>
           最近
-          <select value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
+          <select value={limit} onChange={e => setLimit(Number(e.target.value))}>
             <option value={20}>20</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
@@ -119,12 +187,12 @@ export default function DecisionLogPage() {
             </tr>
           </thead>
           <tbody>
-            {items.length === 0 ? (
+            {filteredItems.length === 0 ? (
               <tr>
                 <td colSpan={9} className={styles.empty}>{loading ? '加载中...' : '暂无决策记录'}</td>
               </tr>
             ) : (
-              items.map((item) => (
+              filteredItems.map((item) => (
                 <tr key={`${item.requestId}-${item.createdAt}`}>
                   <td>{new Date(item.createdAt).toLocaleString()}</td>
                   <td>{item.symbol}</td>
