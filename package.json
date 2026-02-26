@@ -13,6 +13,7 @@
     "type-check": "tsc --noEmit",
     "test": "jest --passWithNoTests",
     "simulate:nofomo": "node scripts/simulate-nofomo.js",
+    "smoke:health": "node scripts/smoke-health.js",
     "desktop:install": "cd desktop && npm install",
     "desktop:dev": "cd desktop && npm run dev"
   },
