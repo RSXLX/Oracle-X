@@ -188,6 +188,41 @@ async function importCSV() {
 
 document.getElementById('importCSVBtn')?.addEventListener('click', importCSV);
 
+
+// Export analysis report
+async function exportReport() {
+  const analysis = window.currentAnalysis;
+  if (!analysis) {
+    alert('没有可导出的分析数据');
+    return;
+  }
+  
+  const report = generateReport(analysis);
+  
+  const blob = new Blob([report], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'oraclex-report.md';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function generateReport(analysis) {
+  const stats = analysis.stats || {};
+  return `# Oracle-X 交易分析报告
+
+生成: ${new Date().toLocaleString()}
+
+风格: ${analysis.style} | 风险: ${analysis.riskLevel}
+
+交易: ${stats.totalTrades}笔 | 金额: ${stats.totalVolume?.toFixed(2)}USDT | 币种: ${stats.uniqueSymbols}
+`;
+}
+
+document.getElementById('exportReportBtn')?.addEventListener('click', exportReport);
+
+
 // Initialize
 (async () => {
   await loadSettings();
