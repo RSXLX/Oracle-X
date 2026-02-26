@@ -124,8 +124,33 @@ function initAll() {
     targetApps: settings.targetApps,
     
     onAppActivated: async (appName) => {
+      console.log('[Trigger] Trading action detected in:', appName);
+      console.log('[Monitor] App activated:', appName);
       if (mainWindow) mainWindow.webContents.send('app-activated', appName);
-      if (settings.enableBlock) await showFomoWarning(appName);
+      
+      // Already triggered by button detection - analyze now
+      if (screenshotAnalyzer && settings.apiKey) {
+        try {
+          const { exec } = require('child_process');
+          const tmpFile = '/tmp/oraclex_trigger_' + Date.now() + '.png';
+          exec('/usr/sbin/screencapture -x ' + tmpFile, async (err) => {
+            if (!err) {
+              const result = await screenshotAnalyzer.analyze(tmpFile);
+              console.log('[Analyzer] Result:', result);
+              if (mainWindow) mainWindow.webContents.send('screenshot-result', result);
+              
+              // Show warning if trading button detected
+              if (result.action === 'block' && settings.enableBlock) {
+                await showFomoWarning(appName, result);
+              }
+            }
+          });
+        } catch (err) {
+          console.error('[Monitor] Screenshot error:', err.message);
+        }
+      } else if (settings.enableBlock) {
+        await showFomoWarning(appName);
+      }
     },
     
     onScreenshot: async (screenshotPath) => {
