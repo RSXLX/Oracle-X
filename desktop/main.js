@@ -1,11 +1,12 @@
 /**
  * Oracle-X Desktop - Main Process
- * 支持全局应用监听 + Chrome Extension 功能
+ * 支持全局应用监听 + 截图 AI 分析
  */
 
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 const { GlobalAppMonitor, MONITOR_MODES } = require('./monitor');
+const { ScreenshotAnalyzer } = require('./screenshot-analyzer');
 
 // 开发环境配置
 const isDev = process.env.NODE_ENV !== 'production';
@@ -14,6 +15,8 @@ const PORT = isDev ? 3000 : 3000;
 // 全局状态
 let mainWindow = null;
 let monitor = null;
+let screenshotAnalyzer = null;
+
 let settings = {
   // AI 配置
   aiProvider: 'stepfun',
@@ -22,7 +25,7 @@ let settings = {
   aiModel: 'step-1-8k',
   
   // 监控配置
-  monitorMode: MONITOR_MODES.ACCESSIBILITY,
+  monitorMode: MONITOR_MODES.SCREENSHOT,  // 默认使用截图模式
   targetApps: ['Binance', 'OKX', 'Bybit', 'Coinbase'],
   cooldown: 5,
   enableBlock: true,
@@ -51,7 +54,6 @@ function createWindow() {
     show: false,
   });
 
-  // 加载页面
   if (isDev) {
     mainWindow.loadURL(`http://localhost:${PORT}`);
     mainWindow.webContents.openDevTools();
@@ -66,6 +68,18 @@ function createWindow() {
 }
 
 /**
+ * 初始化截图分析器
+ */
+function initScreenshotAnalyzer() {
+  screenshotAnalyzer = new ScreenshotAnalyzer({
+    visionProvider: settings.aiProvider,
+    apiKey: settings.apiKey,
+    apiBaseUrl: settings.apiBaseUrl,
+    model: settings.aiModel,
+  });
+}
+
+/**
  * 初始化全局监听器
  */
 function initMonitor() {
@@ -76,22 +90,36 @@ function initMonitor() {
     onAppActivated: async (appName) => {
       console.log('[Monitor] App activated:', appName);
       
-      // 通知渲染进程
       if (mainWindow) {
         mainWindow.webContents.send('app-activated', appName);
       }
       
-      // 如果启用阻断，发送警告
       if (settings.enableBlock) {
         await showFomoWarning(appName);
       }
     },
     
     onScreenshot: async (screenshotPath) => {
-      console.log('[Monitor] Screenshot:', screenshotPath);
+      console.log('[Monitor] Screenshot captured');
       
-      // 可以在这里添加 AI 图像分析
-      // 发送给后端进行视觉识别
+      // 使用 AI 分析截图
+      if (screenshotAnalyzer && settings.aiKey) {
+        try {
+          const result = await screenshotAnalyzer.analyze(screenshotPath);
+          console.log('[Analyzer] Result:', result);
+          
+          if (mainWindow) {
+            mainWindow.webContents.send('screenshot-analyzed', result);
+          }
+          
+          // 如果检测到高风险交易按钮，触发阻断
+          if (result.action === 'block' && settings.enableBlock) {
+            await showFomoWarning(result.platform || 'Trading App', result);
+          }
+        } catch (err) {
+          console.error('[Analyzer] Error:', err.message);
+        }
+      }
     },
   });
   
@@ -102,33 +130,36 @@ function initMonitor() {
 /**
  * 显示 FOMO 警告弹窗
  */
-async function showFomoWarning(appName) {
-  const { dialog, BrowserWindow } = require('electron');
+async function showFomoWarning(appName, analysis = null) {
+  const { dialog } = require('electron');
+  
+  let detail = `检测到您正在 ${appName} 交易\n\n冷静期: ${settings.cooldown} 秒`;
+  
+  if (analysis?.buttons?.length) {
+    detail += `\n\n检测到的按钮: ${analysis.buttons.join(', ')}`;
+  }
+  if (analysis?.riskLevel) {
+    detail += `\n\n风险等级: ${analysis.riskLevel.toUpperCase()}`;
+  }
   
   const result = await dialog.showMessageBox(mainWindow, {
     type: 'warning',
     title: '⚠️ Oracle-X 警告',
-    message: `检测到您正在 ${appName} 交易`,
-    detail: `您确定要继续吗？\n\n冷静期: ${settings.cooldown} 秒\n\n等待时间过后，您可以继续操作。`,
+    message: `检测到交易操作`,
+    detail,
     buttons: ['取消交易', '我确认冷静了，继续'],
     defaultId: 0,
     cancelId: 0,
-    timeoutId: settings.cooldown,
   });
   
   console.log('[Oracle-X] User decision:', result.response === 1 ? 'CONTINUE' : 'CANCELLED');
-  
   return result.response === 1;
 }
 
 // IPC 处理器
 function setupIPC() {
-  // 获取设置
-  ipcMain.handle('getSettings', () => {
-    return settings;
-  });
+  ipcMain.handle('getSettings', () => settings);
 
-  // 保存设置
   ipcMain.handle('saveSettings', (event, newSettings) => {
     settings = { ...settings, ...newSettings };
     
@@ -138,10 +169,19 @@ function setupIPC() {
       monitor.mode = settings.monitorMode;
     }
     
+    // 更新截图分析器
+    if (screenshotAnalyzer) {
+      screenshotAnalyzer.configure({
+        visionProvider: settings.aiProvider,
+        apiKey: settings.apiKey,
+        apiBaseUrl: settings.apiBaseUrl,
+        model: settings.aiModel,
+      });
+    }
+    
     return true;
   });
 
-  // 测试后端连接
   ipcMain.handle('testConnection', async () => {
     try {
       const res = await fetch(`${settings.backendUrl}/api/config-status`);
@@ -151,7 +191,6 @@ function setupIPC() {
     }
   });
 
-  // 获取决策日志
   ipcMain.handle('listDecisionLogs', async (event, limit = 50) => {
     try {
       const res = await fetch(`${settings.backendUrl}/api/decision-log?limit=${limit}`);
@@ -161,7 +200,6 @@ function setupIPC() {
     }
   });
 
-  // 手动触发分析
   ipcMain.handle('analyzeNow', async (event, data) => {
     try {
       const res = await fetch(`${settings.backendUrl}/api/analyze`, {
@@ -175,7 +213,6 @@ function setupIPC() {
     }
   });
 
-  // 截图
   ipcMain.handle('takeScreenshot', async () => {
     const { exec } = require('child_process');
     
@@ -192,20 +229,15 @@ function setupIPC() {
 app.whenReady().then(() => {
   createWindow();
   setupIPC();
+  initScreenshotAnalyzer();
   initMonitor();
 });
 
 app.on('window-all-closed', () => {
-  if (monitor) {
-    monitor.stop();
-  }
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (monitor) monitor.stop();
+  if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
