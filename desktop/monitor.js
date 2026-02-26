@@ -112,7 +112,7 @@ class GlobalAppMonitor {
       return new Promise((resolve, reject) => {
         const tmpFile = `/tmp/oraclex_${Date.now()}.png`;
         
-        exec(`screencapture -x ${tmpFile}`, (err) => {
+        exec(`/usr/sbin/screencapture -x ${tmpFile}`, (err) => {
           if (err) {
             reject(err);
             return;
