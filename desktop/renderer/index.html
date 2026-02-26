@@ -9,46 +9,106 @@
   <body>
     <main class="app">
       <header>
-        <h1>Oracle-X NoFOMO Desktop</h1>
+        <h1>🔮 Oracle-X NoFOMO</h1>
         <p>交易前冷静层 · 决策拦截中心</p>
       </header>
 
       <section class="card">
-        <h2>本地设置</h2>
-        <label>API Base URL <input id="apiBaseUrl" /></label>
-        <label>风险档位
-          <select id="profile">
-            <option value="conservative">保守</option>
-            <option value="balanced">平衡</option>
-            <option value="aggressive">激进</option>
-          </select>
-        </label>
-        <label>决策日志条数
-          <select id="decisionLogLimit">
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-          </select>
-        </label>
-        <label class="row">
-          <input id="enableNoFomoBlock" type="checkbox" />
-          启用高风险强制阻断（No FOMO）
-        </label>
-        <button id="saveBtn">保存设置</button>
-        <div id="saveStatus" class="muted"></div>
+        <h2>🤖 AI API 配置</h2>
+        <div class="form-group">
+          <label>API Provider
+            <select id="aiProvider">
+              <option value="stepfun">阶跃星辰 (StepFun)</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="custom">自定义 API</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>API Key <input type="password" id="apiKey" placeholder="sk-xxx" /></label>
+          <span class="hint">用于 AI 分析调用，请妥善保管</span>
+        </div>
+        <div class="form-group">
+          <label>API Base URL
+            <input type="text" id="apiBaseUrl" placeholder="https://api.stepfun.com/v1" />
+          </label>
+        </div>
+        <div class="form-group">
+          <label>AI Model
+            <input type="text" id="aiModel" placeholder="step-1-8k" />
+          </label>
+        </div>
       </section>
 
       <section class="card">
-        <h2>后端状态</h2>
-        <button id="refreshStatusBtn">刷新状态</button>
-        <pre id="configStatus" class="pre">未加载</pre>
+        <h2>⚙️ 拦截设置</h2>
+        <div class="form-group">
+          <label>风险档位
+            <select id="profile">
+              <option value="conservative">保守 (冷静10秒)</option>
+              <option value="balanced">平衡 (冷静5秒)</option>
+              <option value="aggressive">激进 (冷静3秒)</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>决策日志条数
+            <select id="decisionLogLimit">
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          </label>
+        </div>
+        <label class="checkbox">
+          <input type="checkbox" id="enableNoFomoBlock" />
+          启用高风险强制阻断
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="autoAnalyze" checked />
+          自动调用 AI 分析
+        </label>
       </section>
 
       <section class="card">
-        <h2>决策日志预览</h2>
-        <button id="refreshLogBtn">刷新日志</button>
-        <div id="logMeta" class="muted"></div>
+        <h2>🔌 后端连接</h2>
+        <div class="form-group">
+          <label>后端 API 地址
+            <input type="text" id="backendUrl" placeholder="http://localhost:3000" />
+          </label>
+        </div>
+        <button id="testConnection" class="btn btn-secondary">测试连接</button>
+        <span id="connectionStatus" class="status"></span>
+      </section>
+
+      <section class="actions">
+        <button id="saveBtn" class="btn btn-primary">保存配置</button>
+        <button id="resetBtn" class="btn btn-secondary">恢复默认</button>
+      </section>
+
+      <section class="card">
+        <h2>📊 实时监控</h2>
+        <div class="stats-grid">
+          <div class="stat">
+            <span class="stat-label">今日拦截</span>
+            <span class="stat-value" id="todayBlock">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">今日分析</span>
+            <span class="stat-value" id="todayAnalyze">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">风险化解</span>
+            <span class="stat-value" id="mitigationRate">0%</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>📝 决策日志</h2>
+        <button id="refreshLogBtn" class="btn btn-secondary">刷新</button>
         <div class="tableWrap">
           <table>
             <thead>
