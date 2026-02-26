@@ -23,6 +23,14 @@
             <option value="aggressive">激进</option>
           </select>
         </label>
+        <label>决策日志条数
+          <select id="decisionLogLimit">
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </label>
         <label class="row">
           <input id="enableNoFomoBlock" type="checkbox" />
           启用高风险强制阻断（No FOMO）
@@ -32,12 +40,32 @@
       </section>
 
       <section class="card">
-        <h2>产品状态</h2>
-        <ul>
-          <li>✅ 桌面壳已就绪（Electron）</li>
-          <li>✅ NoFOMO 决策协议已接入后端 `/api/decision`</li>
-          <li>🔜 交易拦截桥接（Extension → Desktop）</li>
-        </ul>
+        <h2>后端状态</h2>
+        <button id="refreshStatusBtn">刷新状态</button>
+        <pre id="configStatus" class="pre">未加载</pre>
+      </section>
+
+      <section class="card">
+        <h2>决策日志预览</h2>
+        <button id="refreshLogBtn">刷新日志</button>
+        <div id="logMeta" class="muted"></div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>交易对</th>
+                <th>方向</th>
+                <th>动作</th>
+                <th>Impulse</th>
+                <th>24h%</th>
+              </tr>
+            </thead>
+            <tbody id="logTbody">
+              <tr><td colspan="6" class="muted">暂无数据</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
 
