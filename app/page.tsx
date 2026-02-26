@@ -238,8 +238,11 @@ export default function Home() {
             </span>
           </div>
 
-          <div className={`${styles.connectionStatus} ${connected ? styles.connected : ''}`}>
-            {usingMock ? '⚠️ MOCK DATA' : (connected ? '● LIVE' : '○ OFFLINE')}
+          <div className={styles.connectionStatusRow}>
+            <div className={`${styles.connectionStatus} ${connected ? styles.connected : ''}`}>
+              {usingMock ? '⚠️ MOCK DATA' : (connected ? '● LIVE' : '○ OFFLINE')}
+            </div>
+            <a className={styles.logLink} href="/decision-log">Decision Log</a>
           </div>
         </div>
       </header>
