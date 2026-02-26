@@ -1,389 +1,193 @@
-# 系统架构文档
+# Oracle-X 系统架构文档
 
-Oracle-X 采用现代化的全栈架构，融合前端展示、后端计算和 AI 分析三大核心模块。
+## 1. 系统架构总览
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Oracle-X 系统架构                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           用户层 (User Layer)                           │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
+│  │   Desktop UI    │  │  System Tray   │  │   Notification         │  │
+│  │   (Electron)    │  │   (托盘图标)    │  │   (系统通知)            │  │
+│  │   ✅ 已完成     │  │   ✅ 已完成     │  │   ✅ 已完成            │  │
+│  └────────┬────────┘  └────────┬────────┘  └───────────┬─────────────┘  │
+└───────────│────────────────────│──────────────────────│──────────────────┘
+            │                    │                      │
+            ▼                    ▼                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         核心服务层 (Core Services)                       │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────────────┐ │
+│  │  GlobalMonitor   │  │ScreenshotAnalyzer│  │   DecisionEngine     │ │
+│  │  (全局监听器)    │  │  (截图AI分析)    │  │   (决策引擎)         │ │
+│  │  ✅ 已完成      │  │   ✅ 已完成      │  │   ✅ 已完成          │ │
+│  └────────┬─────────┘  └────────┬─────────┘  └───────────┬────────────┘ │
+│           │                      │                        │              │
+│  ┌────────┴──────────────────────┴────────────────────────┴───────────┐ │
+│  │                        IPC Bridge (进程通信)                         │ │
+│  │                         ✅ 已完成                                     │ │
+│  └────────────────────────────────┬────────────────────────────────────┘ │
+└───────────────────────────────────┼─────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       数据持久层 (Data Layer)                           │
+│  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────────┐ │
+│  │ SettingsStore  │  │  DecisionLog   │  │     StatsTracker         │ │
+│  │  (设置存储)    │  │  (决策日志)     │  │     (统计追踪)           │ │
+│  │  ✅ 已完成    │  │   ✅ 已完成    │  │     ✅ 已完成            │ │
+│  └────────────────┘  └────────────────┘  └────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 架构概览
+## 2. 数据流图 (Data Flow Diagram)
+
+### 2.1 主数据流
 
 ```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   用户打开   │────▶│  初始化配置   │────▶│  启动监听   │
+│  交易App    │     │   加载设置    │     │  全局监控   │
+└──────────────┘     └──────────────┘     └──────┬───────┘
+                                                  │
+                                                  ▼
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   阻断弹窗   │◀────│   AI 分析    │◀────│  截图捕获   │
+│   ⚠️ 警告   │     │  (视觉识别)   │     │  定时截图   │
+└──────┬───────┘     └──────┬───────┘     └──────────────┘
+       │                    │
+       ▼                    ▼
+┌──────────────┐     ┌──────────────┐
+│  记录决策    │     │  记录统计    │
+│  决策日志   │     │  统计数据    │
+└──────────────┘     └──────────────┘
+```
+
+### 2.2 截图 AI 分析流程
+
+```
+┌─────────────┐
+│  定时截图   │  (每2秒)
+└──────┬──────┘
+       │
+       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                        用户界面层                             │
-│  ┌─────────────┐           ┌──────────────────────┐         │
-│  │  Web 应用   │           │  Chrome 扩展         │         │
-│  │  (Next.js)  │           │  (Side Panel)        │         │
-│  └──────┬──────┘           └──────────┬───────────┘         │
-└─────────┼──────────────────────────────┼─────────────────────┘
-          │                              │
-          └──────────────┬───────────────┘
-                         │
-          ┌──────────────▼──────────────────┐
-          │       API 网关层 / 路由层        │
-          │     (Next.js API Routes)       │
-          │  ┌─────────────────────────┐   │
-          │  │ /api/analyze            │   │
-          │  │ /api/twitter-sentiment  │   │
-          │  └─────────────────────────┘   │
-          └──────────────┬──────────────────┘
-                         │
-          ┌──────────────▼──────────────────┐
-          │        业务逻辑层                │
-          │  ┌──────────┬──────────────┐    │
-          │  │ 数据校验 │ 指标计算      │    │
-          │  │ 数据预处理│ Prompt 构建 │    │
-          │  └──────────┴──────────────┘    │
-          └──────────────┬──────────────────┘
-                         │
-          ┌──────────────▼──────────────────┐
-          │        外部服务层                │
-          │  ┌──────────┬──────────────┐    │
-          │  │ Binance  │ Step AI      │    │
-          │  │ API      │ (阶跃星辰)    │    │
-          │  │          │              │    │
-          │  │ RapidAPI │              │    │
-          │  │ (Twitter)│              │    │
-          │  └──────────┴──────────────┘    │
-          └─────────────────────────────────┘
+│                    ScreenshotAnalyzer                       │
+│  ┌───────────────┐    ┌───────────────┐    ┌────────────┐ │
+│  │ 图片转Base64  │───▶│  构建视觉Prompt │───▶│ 调用AI API │ │
+│  └───────────────┘    └───────────────┘    └─────┬──────┘ │
+└─────────────────────────────────────────────────────────────┘
+                                                    │
+                                                    ▼
+                              ┌───────────────────────────────────┐
+                              │       AI API (MiniMax)           │
+                              │  BaseURL: mydmx.huoyuanqudao.cn  │
+                              │  Key: sk-cXCZz...                │
+                              │  ✅ 已配置可用                    │
+                              └───────────────────┬───────────────┘
+                                                  │
+                                                  ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      结果解析                                │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ {                                                    │   │
+│  │   "hasTradingButtons": true,  // 检测到交易按钮     │   │
+│  │   "buttons": ["买入", "BUY"],                        │   │
+│  │   "platform": "Binance",                           │   │
+│  │   "riskLevel": "high",      // 风险等级            │   │
+│  │   "action": "block"         // 阻断/警告/允许      │   │
+│  │ }                                                    │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 核心模块
+## 3. 组件状态清单
 
-### 1. 前端层
+### 3.1 核心模块
 
-#### Web 应用 (Next.js 14 App Router)
+| 模块 | 文件 | 状态 | 说明 |
+|------|------|------|------|
+| 主进程 | `main.js` | ✅ 完成 | Electron 主进程 |
+| 预加载 | `preload.js` | ✅ 完成 | IPC 桥接 |
+| 全局监听 | `monitor.js` | ✅ 完成 | 应用/截图监听 |
+| 截图分析 | `screenshot-analyzer.js` | ✅ 完成 | AI 视觉分析 |
+| 系统托盘 | `tray-manager.js` | ✅ 完成 | 常驻托盘 |
+| 开机自启 | `auto-start.js` | ✅ 完成 | 登录项管理 |
+| 通知 | `notification-manager.js` | ✅ 完成 | 系统通知 |
+| 设置存储 | `settings-storage.js` | ✅ 完成 | 本地持久化 |
+| 统计追踪 | `stats-tracker.js` | ✅ 完成 | 统计数据 |
+| 决策日志 | `decision-logger.js` | ✅ 完成 | 日志持久化 |
 
-**技术栈：**
+### 3.2 UI 组件
 
-- React 18.3 + TypeScript 5.4
-- Next.js 14.2.5 (App Router)
-- CSS Modules
-- lightweight-charts 5.1
+| 组件 | 文件 | 状态 |
+|------|------|------|
+| 主页面 | `index.html` | ✅ 完成 |
+| 样式 | `styles.css` | ✅ 完成 |
+| 脚本 | `renderer.js` | ✅ 完成 |
 
-**目录结构：**
+### 3.3 API 集成
 
-```
-app/
-├── api/                 # API Routes
-│   ├── analyze/
-│   ├── twitter-sentiment/
-│   └── ...
-├── components/          # React 组件
-│   ├── Header/
-│   ├── MarketCard/
-│   ├── TechnicalIndicators/
-│   └── ...
-├── hooks/               # 自定义 Hooks
-│   ├── useBinanceData.ts
-│   └── ...
-├── globals.css
-├── layout.tsx
-└── page.tsx             # 主页面
-```
-
-**核心组件：**
-
-1. **MarketCard**: 实时价格展示
-2. **TechnicalIndicators**: 技术指标卡片
-3. **UserProfile**: 用户画像分析
-4. **AIAnalysisModal**: AI 分析弹窗（流式响应）
-5. **ChartComponent**: K 线图表展示
-
-#### Chrome 扩展
-
-**结构：**
-
-```
-extension/
-├── manifest.json        # 扩展配置
-├── background.js        # 后台脚本
-├── sidepanel/
-│   ├── index.html
-│   ├── panel.js
-│   └── panel.css
-└── icons/
-```
-
-**工作原理：**
-
-1. 监听用户在交易所页面的操作
-2. 侧边栏展示实时分析结果
-3. 通过 `chrome.runtime.sendMessage` 与后台脚本通信
-4. 调用主应用的 API 获取分析数据
+| API | 状态 | 说明 |
+|-----|------|------|
+| MiniMax Vision | ✅ 已配置 | 截图分析 |
+| 后端 API | ✅ 可用 | 决策日志 |
 
 ---
 
-### 2. API 层 (Next.js API Routes)
+## 4. 待完成事项
 
-运行在 **Vercel Edge Runtime**，支持全球边缘节点部署。
+### 4.1 高优先级
 
-#### 主要端点
+| 事项 | 状态 | 说明 |
+|------|------|------|
+| Desktop 打包测试 | ⏳ 待测试 | 需要实际运行 |
+| 截图分析测试 | ⏳ 待测试 | 验证 AI 识别 |
+| 监听功能测试 | ⏳ 待测试 | 验证应用检测 |
 
-**`/api/analyze` (POST)**
+### 4.2 中优先级
 
-```typescript
-// 数据流
-Request → 参数校验 → K线处理 → 技术指标计算
-       → Prompt构建 → 调用AI → SSE流式响应
-```
+| 事项 | 状态 | 说明 |
+|------|------|------|
+| 打包构建 | ⏳ 待执行 | electron-builder |
+| 安装程序 | ⏳ 待制作 | DMG/EXE |
 
-**关键文件：**
+### 4.3 低优先级
 
-- `app/api/analyze/route.ts`: 路由处理器
-- `lib/validators.ts`: 参数校验
-- `lib/kline-processor.ts`: K 线数据处理
-- `lib/indicators.ts`: 技术指标计算
-- `lib/prompt-builder.ts`: AI Prompt 构建
-- `lib/ai-client.ts`: AI API 调用封装
-
----
-
-### 3. 业务逻辑层
-
-#### 技术指标计算 (`lib/indicators.ts`)
-
-使用 [technicalindicators](https://github.com/anandanand84/technicalindicators) 库：
-
-```typescript
-import { RSI, MACD, BollingerBands, ATR } from 'technicalindicators';
-
-export function calculateIndicators(klines: Kline[]) {
-  const closes = klines.map(k => k.close);
-  const highs = klines.map(k => k.high);
-  const lows = klines.map(k => k.low);
-
-  return {
-    rsi: RSI.calculate({ values: closes, period: 14 }),
-    macd: MACD.calculate({
-      values: closes,
-      fastPeriod: 12,
-      slowPeriod: 26,
-      signalPeriod: 9,
-    }),
-    bb: BollingerBands.calculate({
-      values: closes,
-      period: 20,
-      stdDev: 2,
-    }),
-    atr: ATR.calculate({
-      high: highs,
-      low: lows,
-      close: closes,
-      period: 14,
-    }),
-  };
-}
-```
-
-#### Prompt 工程 (`lib/prompt-builder.ts`)
-
-**系统 Prompt:**
-
-- 定义 AI 角色（资深量化交易分析师）
-- 设定输出格式（结构化分析）
-- 明确禁止事项（不提供投资建议）
-
-**用户 Prompt:**
-
-- 市场数据（价格、涨跌幅、成交量）
-- 技术指标（RSI、MACD、布林带、ATR）
-- 交易意图（做多/做空）
-- 用户画像（历史胜率、交易风格）
+| 事项 | 状态 | 说明 |
+|------|------|------|
+| Linux 支持 | ⏳ 待开发 | AppImage |
+| Windows 支持 | ⏳ 待开发 | NSIS |
 
 ---
 
-### 4. 外部服务层
+## 5. 快速启动命令
 
-#### Binance API
+```bash
+# 进入项目
+cd /Users/sxlx/.openclaw/workspace/Oracle-X
 
-- **用途**: 获取实时市场数据和 K 线
-- **端点**: `https://api.binance.com/api/v3/klines`
-- **限流**: 1200 请求/分钟
+# 启动后端 (可选)
+npm run dev
 
-#### Step AI (阶跃星辰)
-
-- **用途**: 大语言模型 AI 分析
-- **模型**: `step-3.5-flash` (默认)
-- **特点**: 支持 SSE 流式响应
-- **API**: `https://api.stepfun.com/v1/chat/completions`
-
-#### RapidAPI (Twitter)
-
-- **用途**: Twitter 情绪分析
-- **服务**: twitter241
-- **数据**: 推文、情绪评分、影响力 KOL
-
----
-
-## 数据流
-
-### 交易分析完整流程
-
-```
-1. 用户点击"做多"/"做空"按钮
-   ↓
-2. 前端调用 Binance API 获取 K 线数据
-   ↓
-3. POST 请求发送到 /api/analyze
-   ↓
-4. 后端校验参数 (validators.ts)
-   ↓
-5. 处理 K 线数据 (kline-processor.ts)
-   - 数据清洗
-   - 格式转换
-   ↓
-6. 计算技术指标 (indicators.ts)
-   - RSI, MACD, BB, ATR
-   ↓
-7. 构建 AI Prompt (prompt-builder.ts)
-   - 系统 Prompt + 用户 Prompt
-   - 包含市场数据 + 技术指标
-   ↓
-8. 调用 Step AI API (ai-client.ts)
-   - 流式请求
-   - 设置温度、最大令牌数
-   ↓
-9. SSE 流式响应返回前端
-   - 实时显示 AI 分析过程
-   ↓
-10. 分析完成，显示结论 Badge
-    - 绿色: 建议执行
-    - 黄色: 建议观望
-    - 红色: 高风险警告
+# 启动 Desktop
+cd desktop
+npm run dev
 ```
 
 ---
 
-## 技术选型理由
-
-| 技术                    | 选择原因                                   |
-| ----------------------- | ------------------------------------------ |
-| **Next.js 14**          | 支持 App Router、SSR、API Routes、边缘函数 |
-| **TypeScript**          | 类型安全、大型项目可维护性                 |
-| **Vercel Edge Runtime** | 全球边缘节点、低延迟、serverless           |
-| **technicalindicators** | 成熟的技术分析库、支持主流指标             |
-| **lightweight-charts**  | 高性能、TradingView 同源技术               |
-| **Step AI**             | 国产模型、价格友好、支持流式响应           |
-
----
-
-## 性能优化
-
-### 前端
-
-1. **React 18 Concurrent Features**
-   - Suspense 边界处理异步组件
-   - Transition API 优化 UI 响应
-
-2. **图表性能**
-   - lightweight-charts 使用 Canvas 渲染
-   - 数据按需加载，避免一次性渲染大量数据
-
-3. **代码分割**
-   - Next.js 自动代码分割
-   - 动态 import 懒加载非关键组件
-
-### 后端
-
-1. **边缘计算**
-   - Vercel Edge Runtime 全球部署
-   - 自动选择最近节点
-
-2. **流式响应**
-   - SSE 降低首字节时间 (TTFB)
-   - 用户体验提升
-
-3. **数据压缩**
-   - K 线数据压缩传输
-   - 只传递必要字段
-
----
-
-## 扩展性设计
-
-### 插件化架构
+## 6. 配置文件路径
 
 ```
-lib/
-├── indicators/          # 技术指标（可扩展）
-│   ├── rsi.ts
-│   ├── macd.ts
-│   └── custom-indicator.ts
-├── data-sources/        # 数据源（可扩展）
-│   ├── binance.ts
-│   ├── coinbase.ts
-│   └── custom-source.ts
-└── ai-providers/        # AI 提供商（可扩展）
-    ├── step-ai.ts
-    ├── openai.ts
-    └── custom-provider.ts
+~/.config/Oracle-X NoFOMO/
+├── oraclex-config.json    # 用户设置
+├── oraclex-stats.json     # 统计数据
+└── decision-logs.json     # 决策日志
 ```
-
-### 配置驱动
-
-所有可配置项通过环境变量管理：
-
-- AI 模型选择
-- 技术指标参数
-- API 超时时间
-- 流式响应配置
-
----
-
-## 安全设计
-
-1. **API Key 保护**: 服务端环境变量，前端无法访问
-2. **参数白名单校验**: 防止注入攻击
-3. **请求大小限制**: 防止 Payload 攻击
-4. **CORS 策略**: 限制跨域请求
-5. **Rate Limiting**: 防止滥用（计划中）
-
----
-
-## 部署架构
-
-```
-GitHub Repository
-    ↓
-[自动部署]
-    ↓
-Vercel Platform
-    ↓
-全球边缘节点 (CDN + Edge Functions)
-    ↓
-用户访问（最近节点响应）
-```
-
----
-
-## 未来架构演进
-
-### Phase 1: 微服务化
-
-- 将技术指标计算拆分为独立服务
-- 引入消息队列处理异步任务
-
-### Phase 2: 多模型集成
-
-- 支持 OpenAI、Claude、Gemini 等多个 AI 模型
-- 模型输出结果对比
-
-### Phase 3: 实时数据流
-
-- WebSocket 取代轮询
-- 服务端推送价格变动
-
-### Phase 4: 去中心化
-
-- 用户数据存储在 IPFS
-- 链上存储分析历史
-
----
-
-## 参考资料
-
-- [Next.js 文档](https://nextjs.org/docs)
-- [Vercel Edge Runtime](https://vercel.com/docs/functions/edge-functions)
-- [technicalindicators](https://github.com/anandanand84/technicalindicators)
-- [Step AI API](https://platform.stepfun.com/docs/overview/概述)
