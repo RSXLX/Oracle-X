@@ -1,30 +1,49 @@
 /**
- * Oracle-X Desktop Renderer
+ * Oracle-X Desktop Renderer - Full Settings
  */
 
-// Elements
 const els = {
   // AI Config
   aiProvider: document.getElementById('aiProvider'),
   apiKey: document.getElementById('apiKey'),
   apiBaseUrl: document.getElementById('apiBaseUrl'),
   aiModel: document.getElementById('aiModel'),
+  
+  // Data Sources
+  source_binance: document.getElementById('source_binance'),
+  source_bybit: document.getElementById('source_bybit'),
+  source_coingecko: document.getElementById('source_coingecko'),
+  source_alpaca: document.getElementById('source_alpaca'),
+  alpaca_key: document.getElementById('alpaca_key'),
+  alpaca_secret: document.getElementById('alpaca_secret'),
+  
+  // Sentiment
+  sentiment_coingecko: document.getElementById('sentiment_coingecko'),
+  sentiment_twitter: document.getElementById('sentiment_twitter'),
+  sentiment_news: document.getElementById('sentiment_news'),
+  twitter_key: document.getElementById('twitter_key'),
+  news_key: document.getElementById('news_key'),
+  
   // Intercept Settings
   profile: document.getElementById('profile'),
-  decisionLogLimit: document.getElementById('decisionLogLimit'),
-  enableNoFomoBlock: document.getElementById('enableNoFomoBlock'),
+  cooldown: document.getElementById('cooldown'),
+  enableBlock: document.getElementById('enableBlock'),
   autoAnalyze: document.getElementById('autoAnalyze'),
+  
   // Backend
   backendUrl: document.getElementById('backendUrl'),
   testConnection: document.getElementById('testConnection'),
   connectionStatus: document.getElementById('connectionStatus'),
+  
   // Actions
   saveBtn: document.getElementById('saveBtn'),
   resetBtn: document.getElementById('resetBtn'),
+  
   // Stats
   todayBlock: document.getElementById('todayBlock'),
   todayAnalyze: document.getElementById('todayAnalyze'),
   mitigationRate: document.getElementById('mitigationRate'),
+  
   // Logs
   refreshLogBtn: document.getElementById('refreshLogBtn'),
   logTbody: document.getElementById('logTbody'),
@@ -35,27 +54,64 @@ const DEFAULT_SETTINGS = {
   apiKey: '',
   apiBaseUrl: 'https://api.stepfun.com/v1',
   aiModel: 'step-1-8k',
+  
+  dataSources: {
+    crypto: ['binance', 'coingecko'],
+    stock: [],
+    futures: [],
+  },
+  
+  sentimentSources: ['coingecko'],
+  
+  credentials: {
+    alpaca_key: '',
+    alpaca_secret: '',
+    twitter_key: '',
+    news_key: '',
+  },
+  
   profile: 'balanced',
-  decisionLogLimit: 50,
-  enableNoFomoBlock: true,
+  cooldown: 5,
+  enableBlock: true,
   autoAnalyze: true,
   backendUrl: 'http://localhost:3000',
 };
 
 async function loadSettings() {
   try {
-    const settings = await window.oracleDesktop.getSettings();
-    els.aiProvider.value = settings.aiProvider || DEFAULT_SETTINGS.aiProvider;
-    els.apiKey.value = settings.apiKey || '';
-    els.apiBaseUrl.value = settings.apiBaseUrl || DEFAULT_SETTINGS.apiBaseUrl;
-    els.aiModel.value = settings.aiModel || DEFAULT_SETTINGS.aiModel;
-    els.profile.value = settings.profile || DEFAULT_SETTINGS.profile;
-    els.decisionLogLimit.value = settings.decisionLogLimit || DEFAULT_SETTINGS.decisionLogLimit;
-    els.enableNoFomoBlock.checked = settings.enableNoFomoBlock !== false;
-    els.autoAnalyze.checked = settings.autoAnalyze !== false;
-    els.backendUrl.value = settings.backendUrl || DEFAULT_SETTINGS.backendUrl;
+    const s = await window.oracleDesktop.getSettings();
+    if (!s) return;
+    
+    els.aiProvider.value = s.aiProvider || DEFAULT_SETTINGS.aiProvider;
+    els.apiKey.value = s.apiKey || '';
+    els.apiBaseUrl.value = s.apiBaseUrl || DEFAULT_SETTINGS.apiBaseUrl;
+    els.aiModel.value = s.aiModel || DEFAULT_SETTINGS.aiModel;
+    
+    // Data Sources
+    els.source_binance.checked = s.dataSources?.crypto?.includes('binance');
+    els.source_bybit.checked = s.dataSources?.crypto?.includes('bybit');
+    els.source_coingecko.checked = s.dataSources?.crypto?.includes('coingecko');
+    els.source_alpaca.checked = s.dataSources?.stock?.includes('alpaca');
+    els.alpaca_key.value = s.credentials?.alpaca_key || '';
+    els.alpaca_secret.value = s.credentials?.alpaca_secret || '';
+    
+    // Sentiment
+    els.sentiment_coingecko.checked = s.sentimentSources?.includes('coingecko');
+    els.sentiment_twitter.checked = s.sentimentSources?.includes('twitter');
+    els.sentiment_news.checked = s.sentimentSources?.includes('news');
+    els.twitter_key.value = s.credentials?.twitter_key || '';
+    els.news_key.value = s.credentials?.news_key || '';
+    
+    // Intercept
+    els.profile.value = s.profile || DEFAULT_SETTINGS.profile;
+    els.cooldown.value = s.cooldown || DEFAULT_SETTINGS.cooldown;
+    els.enableBlock.checked = s.enableBlock !== false;
+    els.autoAnalyze.checked = s.autoAnalyze !== false;
+    
+    // Backend
+    els.backendUrl.value = s.backendUrl || DEFAULT_SETTINGS.backendUrl;
   } catch (err) {
-    console.error('Failed to load settings:', err);
+    console.error('Load settings error:', err);
   }
 }
 
@@ -65,12 +121,39 @@ async function saveSettings() {
     apiKey: els.apiKey.value,
     apiBaseUrl: els.apiBaseUrl.value,
     aiModel: els.aiModel.value,
+    
+    dataSources: {
+      crypto: [
+        ...(els.source_binance.checked ? ['binance'] : []),
+        ...(els.source_bybit.checked ? ['bybit'] : []),
+        ...(els.source_coingecko.checked ? ['coingecko'] : []),
+      ],
+      stock: [
+        ...(els.source_alpaca.checked ? ['alpaca'] : []),
+      ],
+      futures: [],
+    },
+    
+    sentimentSources: [
+      ...(els.sentiment_coingecko.checked ? ['coingecko'] : []),
+      ...(els.sentiment_twitter.checked ? ['twitter'] : []),
+      ...(els.sentiment_news.checked ? ['news'] : []),
+    ],
+    
+    credentials: {
+      alpaca_key: els.alpaca_key.value,
+      alpaca_secret: els.alpaca_secret.value,
+      twitter_key: els.twitter_key.value,
+      news_key: els.news_key.value,
+    },
+    
     profile: els.profile.value,
-    decisionLogLimit: Number(els.decisionLogLimit.value),
-    enableNoFomoBlock: els.enableNoFomoBlock.checked,
+    cooldown: parseInt(els.cooldown.value) || 5,
+    enableBlock: els.enableBlock.checked,
     autoAnalyze: els.autoAnalyze.checked,
     backendUrl: els.backendUrl.value,
   };
+  
   await window.oracleDesktop.saveSettings(settings);
 }
 
@@ -79,6 +162,7 @@ function renderLogs(items = []) {
     els.logTbody.innerHTML = '<tr><td colspan="6" class="muted">暂无决策日志</td></tr>';
     return;
   }
+  
   els.logTbody.innerHTML = items.slice(0, 100).map(row => `
     <tr>
       <td>${new Date(row.createdAt).toLocaleString()}</td>
@@ -93,27 +177,29 @@ function renderLogs(items = []) {
 
 async function refreshLogs() {
   try {
-    const limit = Number(els.decisionLogLimit.value) || 50;
+    const limit = 50;
     const res = await window.oracleDesktop.listDecisionLogs(limit);
     renderLogs(res.items || []);
-    // Update stats
+    
     const items = res.items || [];
     const today = new Date().toDateString();
     const todayItems = items.filter(i => new Date(i.createdAt).toDateString() === today);
     const blocks = todayItems.filter(i => i.decision?.action === 'BLOCK').length;
     const analyzed = todayItems.length;
     const mitigation = analyzed > 0 ? Math.round((analyzed - blocks) / analyzed * 100) : 0;
+    
     els.todayBlock.textContent = blocks;
     els.todayAnalyze.textContent = analyzed;
     els.mitigationRate.textContent = mitigation + '%';
   } catch (err) {
-    console.error('Failed to load logs:', err);
+    console.error('Load logs error:', err);
   }
 }
 
 async function testConnection() {
   els.connectionStatus.textContent = '测试中...';
   els.connectionStatus.className = 'status';
+  
   try {
     const ok = await window.oracleDesktop.testConnection();
     els.connectionStatus.textContent = ok ? '✅ 连接成功' : '❌ 连接失败';
@@ -132,14 +218,20 @@ els.saveBtn.addEventListener('click', async () => {
 });
 
 els.resetBtn.addEventListener('click', async () => {
-  Object.assign(DEFAULT_SETTINGS, { backendUrl: els.backendUrl.value });
   els.aiProvider.value = DEFAULT_SETTINGS.aiProvider;
   els.apiKey.value = '';
   els.apiBaseUrl.value = DEFAULT_SETTINGS.apiBaseUrl;
   els.aiModel.value = DEFAULT_SETTINGS.aiModel;
+  els.source_binance.checked = true;
+  els.source_coingecko.checked = true;
+  els.source_bybit.checked = false;
+  els.source_alpaca.checked = false;
+  els.sentiment_coingecko.checked = true;
+  els.sentiment_twitter.checked = false;
+  els.sentiment_news.checked = false;
   els.profile.value = DEFAULT_SETTINGS.profile;
-  els.decisionLogLimit.value = DEFAULT_SETTINGS.decisionLogLimit;
-  els.enableNoFomoBlock.checked = DEFAULT_SETTINGS.enableNoFomoBlock;
+  els.cooldown.value = DEFAULT_SETTINGS.cooldown;
+  els.enableBlock.checked = DEFAULT_SETTINGS.enableBlock;
   els.autoAnalyze.checked = DEFAULT_SETTINGS.autoAnalyze;
   await saveSettings();
 });

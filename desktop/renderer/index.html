@@ -10,13 +10,14 @@
     <main class="app">
       <header>
         <h1>🔮 Oracle-X NoFOMO</h1>
-        <p>交易前冷静层 · 决策拦截中心</p>
+        <p>交易前冷静层 · 智能决策中心</p>
       </header>
 
+      <!-- AI API 配置 -->
       <section class="card">
         <h2>🤖 AI API 配置</h2>
         <div class="form-group">
-          <label>API Provider
+          <label>AI Provider
             <select id="aiProvider">
               <option value="stepfun">阶跃星辰 (StepFun)</option>
               <option value="openai">OpenAI</option>
@@ -27,20 +28,78 @@
         </div>
         <div class="form-group">
           <label>API Key <input type="password" id="apiKey" placeholder="sk-xxx" /></label>
-          <span class="hint">用于 AI 分析调用，请妥善保管</span>
         </div>
         <div class="form-group">
-          <label>API Base URL
-            <input type="text" id="apiBaseUrl" placeholder="https://api.stepfun.com/v1" />
-          </label>
+          <label>API Base URL <input type="text" id="apiBaseUrl" placeholder="https://api.stepfun.com/v1" /></label>
         </div>
         <div class="form-group">
-          <label>AI Model
-            <input type="text" id="aiModel" placeholder="step-1-8k" />
-          </label>
+          <label>Model <input type="text" id="aiModel" placeholder="step-1-8k" /></label>
         </div>
       </section>
 
+      <!-- 数据源配置 -->
+      <section class="card">
+        <h2>📊 数据源配置</h2>
+        <p class="hint">选择要接入的市场数据源和交易记录</p>
+        
+        <div class="source-section">
+          <h3>加密货币</h3>
+          <label class="checkbox">
+            <input type="checkbox" id="source_binance" checked />
+            Binance
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="source_bybit" />
+            Bybit
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="source_coingecko" checked />
+            CoinGecko（无需认证）
+          </label>
+        </div>
+
+        <div class="source-section">
+          <h3>股票</h3>
+          <label class="checkbox">
+            <input type="checkbox" id="source_alpaca" />
+            Alpaca（需要 API Key）
+          </label>
+          <div class="form-group">
+            <label>Alpaca API Key <input type="text" id="alpaca_key" placeholder="PKXXX" /></label>
+          </div>
+          <div class="form-group">
+            <label>Alpaca Secret <input type="password" id="alpaca_secret" placeholder="Secret" /></label>
+          </div>
+        </div>
+      </section>
+
+      <!-- 情绪源配置 -->
+      <section class="card">
+        <h2>💭 情绪源配置</h2>
+        <p class="hint">选择要分析的情绪数据源</p>
+        
+        <label class="checkbox">
+          <input type="checkbox" id="sentiment_coingecko" checked />
+          CoinGecko 社区情绪（无需认证）
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="sentiment_twitter" />
+          Twitter/X（需要 API）
+        </label>
+        <div class="form-group">
+          <label>Twitter API Key <input type="password" id="twitter_key" placeholder="RapidAPI Key" /></label>
+        </div>
+        
+        <label class="checkbox">
+          <input type="checkbox" id="sentiment_news" />
+          News API
+        </label>
+        <div class="form-group">
+          <label>News API Key <input type="password" id="news_key" placeholder="API Key" /></label>
+        </div>
+      </section>
+
+      <!-- 拦截设置 -->
       <section class="card">
         <h2>⚙️ 拦截设置</h2>
         <div class="form-group">
@@ -53,17 +112,10 @@
           </label>
         </div>
         <div class="form-group">
-          <label>决策日志条数
-            <select id="decisionLogLimit">
-              <option value="20">20</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="200">200</option>
-            </select>
-          </label>
+          <label>冷静时间（秒）<input type="number" id="cooldown" value="5" min="0" max="60" /></label>
         </div>
         <label class="checkbox">
-          <input type="checkbox" id="enableNoFomoBlock" />
+          <input type="checkbox" id="enableBlock" checked />
           启用高风险强制阻断
         </label>
         <label class="checkbox">
@@ -72,6 +124,7 @@
         </label>
       </section>
 
+      <!-- 后端连接 -->
       <section class="card">
         <h2>🔌 后端连接</h2>
         <div class="form-group">
@@ -83,11 +136,13 @@
         <span id="connectionStatus" class="status"></span>
       </section>
 
+      <!-- 操作按钮 -->
       <section class="actions">
         <button id="saveBtn" class="btn btn-primary">保存配置</button>
         <button id="resetBtn" class="btn btn-secondary">恢复默认</button>
       </section>
 
+      <!-- 实时监控 -->
       <section class="card">
         <h2>📊 实时监控</h2>
         <div class="stats-grid">
@@ -106,6 +161,7 @@
         </div>
       </section>
 
+      <!-- 决策日志 -->
       <section class="card">
         <h2>📝 决策日志</h2>
         <button id="refreshLogBtn" class="btn btn-secondary">刷新</button>
