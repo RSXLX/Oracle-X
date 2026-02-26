@@ -1,6 +1,5 @@
 /**
- * Oracle-X Desktop - Main Process (完整版)
- * 全局应用监听 + 截图 AI 分析 + 系统托盘 + 通知 + 开机自启动
+ * Oracle-X Desktop - Main Process (完整版 + 钱包)
  */
 
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
@@ -10,6 +9,7 @@ const { ScreenshotAnalyzer } = require('./screenshot-analyzer');
 const { TrayManager } = require('./tray-manager');
 const { AutoStartManager } = require('./auto-start');
 const { NotificationManager } = require('./notification-manager');
+const { WalletAnalyzer } = require('./wallet-analyzer');
 
 const isDev = process.env.NODE_ENV !== 'production';
 const PORT = isDev ? 3000 : 3000;
@@ -20,26 +20,20 @@ let autoStartManager = null;
 let notificationManager = null;
 let monitor = null;
 let screenshotAnalyzer = null;
+let walletAnalyzer = null;
 
 let settings = {
-  // AI
   aiProvider: 'minimax',
   apiKey: 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq',
   apiBaseUrl: 'https://mydmx.huoyuanqudao.cn/v1',
   aiModel: 'MiniMax-M2.5-highspeed',
-  
-  // 监控
   monitorMode: MONITOR_MODES.SCREENSHOT,
   targetApps: ['Binance', 'OKX', 'Bybit', 'Coinbase'],
   cooldown: 5,
   enableBlock: true,
-  
-  // 系统
   minimizeToTray: true,
   autoStart: false,
   notifications: true,
-  
-  // 后端
   backendUrl: `http://localhost:${PORT}`,
 };
 
@@ -58,7 +52,6 @@ function createWindow() {
     },
     backgroundColor: '#0d1117',
     show: false,
-    closePolicy: settings.minimizeToTray ? 'hide' : undefined,
   });
 
   if (isDev) {
@@ -67,22 +60,16 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   }
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    console.log('[Oracle-X] Desktop started');
-  });
-
-  // 系统托盘
+  mainWindow.once('ready-to-show', () => mainWindow.show());
+  
   trayManager = new TrayManager(mainWindow);
   trayManager.create();
-
-  // 通知管理器
+  
   notificationManager = new NotificationManager();
   notificationManager.setEnabled(settings.notifications);
 }
 
 function initManagers() {
-  // 截图分析器
   screenshotAnalyzer = new ScreenshotAnalyzer({
     visionProvider: settings.aiProvider,
     apiKey: settings.apiKey,
@@ -90,50 +77,34 @@ function initManagers() {
     model: settings.aiModel,
   });
 
-  // 开机自启动
   autoStartManager = new AutoStartManager();
-  if (settings.autoStart) {
-    autoStartManager.enable();
+  if (settings.autoStart) autoStartManager.enable();
+
+  walletAnalyzer = new WalletAnalyzer();
+  
+  // 添加默认钱包（如有配置）
+  if (settings.wallets) {
+    for (const w of settings.wallets) {
+      walletAnalyzer.addWallet(w.address, w.chain, w.label);
+    }
   }
 
-  // 全局监听器
   monitor = new GlobalAppMonitor({
     mode: settings.monitorMode,
     targetApps: settings.targetApps,
     
     onAppActivated: async (appName) => {
-      console.log('[Monitor] App activated:', appName);
       if (mainWindow) mainWindow.webContents.send('app-activated', appName);
-      
-      if (settings.enableBlock) {
-        const proceed = await showFomoWarning(appName);
-        if (!proceed) {
-          notificationManager.showRiskMitigated();
-        }
-      }
+      if (settings.enableBlock) await showFomoWarning(appName);
     },
     
     onScreenshot: async (screenshotPath) => {
-      console.log('[Monitor] Screenshot captured');
       if (screenshotAnalyzer && settings.apiKey) {
         try {
           const result = await screenshotAnalyzer.analyze(screenshotPath);
-          console.log('[Analyzer] Result:', result);
-          
-          if (mainWindow) {
-            mainWindow.webContents.send('screenshot-analyzed', result);
-          }
-          
-          // 系统通知
-          if (result.action === 'block' && settings.notifications) {
-            notificationManager.showTradeWarning(result.platform || 'Trading App', result.buttons);
-          }
-          
+          if (mainWindow) mainWindow.webContents.send('screenshot-analyzed', result);
           if (result.action === 'block' && settings.enableBlock) {
-            const proceed = await showFomoWarning(result.platform || 'Trading App', result);
-            if (!proceed) {
-              notificationManager.showRiskMitigated();
-            }
+            await showFomoWarning(result.platform || 'Trading App', result);
           }
         } catch (err) {
           console.error('[Analyzer] Error:', err.message);
@@ -143,77 +114,66 @@ function initManagers() {
   });
   
   monitor.start();
-  console.log('[Monitor] Started');
 }
 
 async function showFomoWarning(appName, analysis = null) {
   const { dialog } = require('electron');
-  
   let detail = `检测到您正在 ${appName} 交易\n\n冷静期: ${settings.cooldown} 秒`;
-  if (analysis?.buttons?.length) detail += `\n\n检测到按钮: ${analysis.buttons.join(', ')}`;
-  if (analysis?.riskLevel) detail += `\n\n风险等级: ${analysis.riskLevel.toUpperCase()}`;
+  if (analysis?.buttons?.length) detail += `\n\n按钮: ${analysis.buttons.join(', ')}`;
   
   const result = await dialog.showMessageBox(mainWindow, {
     type: 'warning',
     title: '⚠️ Oracle-X 警告',
     message: '检测到交易操作',
     detail,
-    buttons: ['取消交易', '我确认冷静了，继续'],
+    buttons: ['取消交易', '继续'],
     defaultId: 0,
-    cancelId: 0,
   });
   
-  console.log('[Oracle-X] Decision:', result.response === 1 ? 'CONTINUE' : 'CANCELLED');
   return result.response === 1;
 }
 
 function setupIPC() {
+  // Settings
   ipcMain.handle('getSettings', () => settings);
-
   ipcMain.handle('saveSettings', (event, newSettings) => {
-    const oldSettings = { ...settings };
     settings = { ...settings, ...newSettings };
-    
-    // 更新各模块
-    if (monitor) {
-      monitor.targetApps = settings.targetApps;
-      monitor.mode = settings.monitorMode;
-    }
-    
-    if (screenshotAnalyzer) {
-      screenshotAnalyzer.configure({
-        visionProvider: settings.aiProvider,
-        apiKey: settings.apiKey,
-        apiBaseUrl: settings.apiBaseUrl,
-        model: settings.aiModel,
-      });
-    }
-    
-    // 自启动
-    if (autoStartManager && settings.autoStart !== oldSettings.autoStart) {
-      autoStartManager.toggle(settings.autoStart);
-    }
-    
-    // 通知
-    if (notificationManager) {
-      notificationManager.setEnabled(settings.notifications);
-    }
-    
+    if (monitor) { monitor.targetApps = settings.targetApps; monitor.mode = settings.monitorMode; }
+    if (screenshotAnalyzer) screenshotAnalyzer.configure({ visionProvider: settings.aiProvider, apiKey: settings.apiKey, apiBaseUrl: settings.apiBaseUrl, model: settings.aiModel });
+    if (autoStartManager && settings.autoStart !== (settings.autoStart || false)) autoStartManager.toggle(settings.autoStart);
+    if (notificationManager) notificationManager.setEnabled(settings.notifications);
     return true;
   });
 
+  // Connection
   ipcMain.handle('testConnection', async () => {
     try { const res = await fetch(`${settings.backendUrl}/api/config-status`); return res.ok; } catch { return false; }
   });
 
+  // Logs
   ipcMain.handle('listDecisionLogs', async (event, limit = 50) => {
     try { const res = await fetch(`${settings.backendUrl}/api/decision-log?limit=${limit}`); return await res.json(); } catch { return { items: [] }; }
   });
 
-  ipcMain.handle('analyzeNow', async (event, data) => {
-    try { const res = await fetch(`${settings.backendUrl}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); return await res.json(); } catch { return { error: err.message }; }
+  // Wallet
+  ipcMain.handle('addWallet', (event, address, chain, label) => {
+    return walletAnalyzer.addWallet(address, chain, label);
+  });
+  
+  ipcMain.handle('getWallets', () => {
+    return walletAnalyzer.getWallets();
+  });
+  
+  ipcMain.handle('getWalletTransactions', async (event, address, chain, limit = 50) => {
+    return await walletAnalyzer.fetchTransactions(address, chain, limit);
+  });
+  
+  ipcMain.handle('analyzeWallet', async (event, address, chain) => {
+    const txs = await walletAnalyzer.fetchTransactions(address, chain, 100);
+    return walletAnalyzer.analyzePattern(txs);
   });
 
+  // Screenshot
   ipcMain.handle('takeScreenshot', async () => {
     const { exec } = require('child_process');
     return new Promise((resolve) => {
@@ -222,7 +182,7 @@ function setupIPC() {
     });
   });
 
-  // 窗口控制
+  // Window controls
   ipcMain.handle('minimize', () => mainWindow?.minimize());
   ipcMain.handle('maximize', () => {
     if (mainWindow?.isMaximized()) mainWindow.unmaximize();

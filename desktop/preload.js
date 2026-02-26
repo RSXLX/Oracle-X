@@ -4,7 +4,6 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-// 暴露 API 给渲染进程
 contextBridge.exposeInMainWorld('oracleDesktop', {
   // Settings
   getSettings: () => ipcRenderer.invoke('getSettings'),
@@ -19,14 +18,18 @@ contextBridge.exposeInMainWorld('oracleDesktop', {
   // Analysis
   analyzeNow: (data) => ipcRenderer.invoke('analyzeNow', data),
   
+  // Wallet
+  addWallet: (address, chain, label) => ipcRenderer.invoke('addWallet', address, chain, label),
+  getWallets: () => ipcRenderer.invoke('getWallets'),
+  getWalletTransactions: (address, chain, limit) => ipcRenderer.invoke('getWalletTransactions', address, chain, limit),
+  analyzeWallet: (address, chain) => ipcRenderer.invoke('analyzeWallet', address, chain),
+  
   // Screenshot
   takeScreenshot: () => ipcRenderer.invoke('takeScreenshot'),
   
-  // Event listeners
-  onAppActivated: (callback) => {
-    ipcRenderer.on('app-activated', (event, appName) => callback(appName));
-  },
+  // Events
+  onAppActivated: (callback) => ipcRenderer.on('app-activated', (event, appName) => callback(appName)),
+  onScreenshotAnalyzed: (callback) => ipcRenderer.on('screenshot-analyzed', (event, result) => callback(result)),
   
-  // Platform info
   platform: process.platform,
 });

@@ -3,124 +3,124 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Oracle-X NoFOMO Desktop</title>
+    <title>Oracle-X NoFOMO</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app">
       <header>
         <h1>🔮 Oracle-X NoFOMO</h1>
-        <p>全局交易冷静层 · 任意应用监听</p>
+        <p>全局交易冷静层</p>
       </header>
 
-      <!-- 监控模式 -->
-      <section class="card">
-        <h2>👁️ 全局监控设置</h2>
-        
-        <div class="form-group">
-          <label>监控模式
-            <select id="monitorMode">
-              <option value="accessibility">应用监听（推荐）</option>
-              <option value="screenshot">屏幕截图 AI 分析</option>
-              <option value="global_key">全局快捷键</option>
-            </select>
-          </label>
-        </div>
+      <!-- 导航 -->
+      <nav class="tabs">
+        <button class="tab active" data-tab="monitor">👁️ 监控</button>
+        <button class="tab" data-tab="wallet">💰 钱包</button>
+        <button class="tab" data-tab="settings">⚙️ 设置</button>
+      </nav>
 
-        <div class="source-section">
-          <h3>监听目标应用</h3>
-          <label class="checkbox"><input type="checkbox" id="app_binance" checked /> Binance</label>
-          <label class="checkbox"><input type="checkbox" id="app_okx" checked /> OKX</label>
-          <label class="checkbox"><input type="checkbox" id="app_bybit" checked /> Bybit</label>
-          <label class="checkbox"><input type="checkbox" id="app_coinbase" /> Coinbase</label>
-          <label class="checkbox"><input type="checkbox" id="app_tradingview" /> TradingView</label>
-          <label class="checkbox"><input type="checkbox" id="app_metatrader" /> MetaTrader</label>
-        </div>
+      <!-- 监控面板 -->
+      <section id="panel-monitor" class="panel active">
+        <section class="card">
+          <h2>👁️ 全局监控</h2>
+          <div class="form-group">
+            <label>监控模式
+              <select id="monitorMode">
+                <option value="screenshot">截图 AI 分析</option>
+                <option value="accessibility">应用监听</option>
+              </select>
+            </label>
+          </div>
+          <div class="source-section">
+            <h3>监听应用</h3>
+            <label class="checkbox"><input type="checkbox" id="app_binance" checked /> Binance</label>
+            <label class="checkbox"><input type="checkbox" id="app_okx" checked /> OKX</label>
+            <label class="checkbox"><input type="checkbox" id="app_bybit" checked /> Bybit</label>
+            <label class="checkbox"><input type="checkbox" id="app_coinbase" /> Coinbase</label>
+          </div>
+        </section>
+        <section class="card">
+          <h2>📊 今日统计</h2>
+          <div class="stats-grid">
+            <div class="stat"><span class="stat-label">阻断</span><span class="stat-value" id="todayBlock">0</span></div>
+            <div class="stat"><span class="stat-label">化解</span><span class="stat-value" id="mitigationRate">0%</span></div>
+          </div>
+        </section>
       </section>
 
-      <!-- AI API 配置 -->
-      <section class="card">
-        <h2>🤖 AI API 配置</h2>
-        <div class="form-group">
-          <label>AI Provider
-            <select id="aiProvider">
-              <option value="minimax">MiniMax (免费中转)</option>
-              <option value="openai">OpenAI</option>
-              <option value="gemini">Google Gemini</option>
-            </select>
-          </label>
-        </div>
-        <div class="form-group">
-          <label>API Key <input type="password" id="apiKey" placeholder="sk-xxx" /></label>
-        </div>
-        <div class="form-group">
-          <label>API Base URL <input type="text" id="apiBaseUrl" placeholder="https://mydmx.huoyuanqudao.cn/v1" /></label>
-        </div>
+      <!-- 钱包面板 -->
+      <section id="panel-wallet" class="panel">
+        <section class="card">
+          <h2>💰 钱包管理</h2>
+          <div class="form-group">
+            <label>选择链
+              <select id="walletChain">
+                <option value="ethereum">Ethereum</option>
+                <option value="bsc">BNB Chain</option>
+                <option value="polygon">Polygon</option>
+                <option value="arbitrum">Arbitrum</option>
+                <option value="solana">Solana</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-group">
+            <label>钱包地址 <input type="text" id="walletAddress" placeholder="0x..." /></label>
+          </div>
+          <div class="form-group">
+            <label>备注 <input type="text" id="walletLabel" placeholder="如：主钱包" /></label>
+          </div>
+          <button id="addWalletBtn" class="btn btn-primary">添加钱包</button>
+        </section>
+
+        <section class="card">
+          <h2>📋 已添加钱包</h2>
+          <div id="walletList" class="wallet-list">
+            <p class="muted">暂无钱包</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>📊 交易分析</h2>
+          <div id="walletAnalysis">
+            <p class="muted">选择钱包查看分析</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>📝 交易记录</h2>
+          <button id="refreshWalletBtn" class="btn btn-secondary">刷新记录</button>
+          <div class="tableWrap">
+            <table>
+              <thead><tr><th>时间</th><th>类型</th><th>金额</th><th>Gas</th></tr></thead>
+              <tbody id="txTbody"><tr><td colspan="4" class="muted">暂无记录</td></tr></tbody>
+            </table>
+          </div>
+        </section>
       </section>
 
-      <!-- 冷静设置 -->
-      <section class="card">
-        <h2>⚙️ 冷静设置</h2>
-        <div class="form-group">
-          <label>风险档位
-            <select id="profile">
-              <option value="conservative">保守 (冷静15秒)</option>
-              <option value="balanced" selected>平衡 (冷静5秒)</option>
-              <option value="aggressive">激进 (冷静3秒)</option>
-            </select>
-          </label>
-        </div>
-        <div class="form-group">
-          <label>冷静时间（秒）<input type="number" id="cooldown" value="5" min="0" max="60" /></label>
-        </div>
-        <label class="checkbox"><input type="checkbox" id="enableBlock" checked /> 启用阻断弹窗</label>
-        <label class="checkbox"><input type="checkbox" id="autoAnalyze" checked /> 自动 AI 分析</label>
-      </section>
-
-      <!-- 系统设置 -->
-      <section class="card">
-        <h2>🖥️ 系统设置</h2>
-        <label class="checkbox"><input type="checkbox" id="minimizeToTray" checked /> 关闭时最小化到托盘</label>
-        <label class="checkbox"><input type="checkbox" id="autoStart" /> 开机自启动</label>
-        <label class="checkbox"><input type="checkbox" id="notifications" checked /> 启用系统通知</label>
-      </section>
-
-      <!-- 后端连接 -->
-      <section class="card">
-        <h2>🔌 后端连接</h2>
-        <div class="form-group">
-          <label>后端 API 地址 <input type="text" id="backendUrl" placeholder="http://localhost:3000" /></label>
-        </div>
-        <button id="testConnection" class="btn btn-secondary">测试连接</button>
-        <span id="connectionStatus" class="status"></span>
-      </section>
-
-      <!-- 操作按钮 -->
-      <section class="actions">
-        <button id="saveBtn" class="btn btn-primary">保存配置</button>
-        <button id="resetBtn" class="btn btn-secondary">恢复默认</button>
-      </section>
-
-      <!-- 监控状态 -->
-      <section class="card">
-        <h2>📊 监控状态</h2>
-        <div class="stats-grid">
-          <div class="stat"><span class="stat-label">监控模式</span><span class="stat-value" id="monitorStatus">截图分析</span></div>
-          <div class="stat"><span class="stat-label">今日阻断</span><span class="stat-value" id="todayBlock">0</span></div>
-          <div class="stat"><span class="stat-label">风险化解</span><span class="stat-value" id="mitigationRate">0%</span></div>
-        </div>
-      </section>
-
-      <!-- 决策日志 -->
-      <section class="card">
-        <h2>📝 决策日志</h2>
-        <button id="refreshLogBtn" class="btn btn-secondary">刷新</button>
-        <div class="tableWrap">
-          <table>
-            <thead><tr><th>时间</th><th>应用</th><th>动作</th><th>结果</th></tr></thead>
-            <tbody id="logTbody"><tr><td colspan="4" class="muted">暂无数据</td></tr></tbody>
-          </table>
-        </div>
+      <!-- 设置面板 -->
+      <section id="panel-settings" class="panel">
+        <section class="card">
+          <h2>🤖 AI 配置</h2>
+          <div class="form-group">
+            <label>API Provider <select id="aiProvider"><option value="minimax">MiniMax</option></select></label>
+          </div>
+          <div class="form-group">
+            <label>API Key <input type="password" id="apiKey" /></label>
+          </div>
+        </section>
+        <section class="card">
+          <h2>⚙️ 冷静设置</h2>
+          <div class="form-group">
+            <label>冷静时间 <input type="number" id="cooldown" value="5" min="0" max="60" /> 秒</label>
+          </div>
+          <label class="checkbox"><input type="checkbox" id="enableBlock" checked /> 启用阻断</label>
+          <label class="checkbox"><input type="checkbox" id="autoStart" /> 开机自启</label>
+        </section>
+        <section class="actions">
+          <button id="saveBtn" class="btn btn-primary">保存配置</button>
+        </section>
       </section>
     </main>
 
