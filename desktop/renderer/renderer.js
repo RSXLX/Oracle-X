@@ -42,9 +42,9 @@ const els = {
 const DEFAULT_SETTINGS = {
   monitorMode: 'screenshot',
   targetApps: ['Binance', 'OKX', 'Bybit'],
-  aiProvider: 'stepfun',
+  aiProvider: 'minimax',
   apiKey: '',
-  apiBaseUrl: 'https://api.stepfun.com/v1',
+  apiBaseUrl: 'https://fucaixie.xyz/V1',
   profile: 'balanced',
   cooldown: 5,
   enableBlock: true,

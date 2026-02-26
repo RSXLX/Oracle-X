@@ -23,10 +23,10 @@ let screenshotAnalyzer = null;
 
 let settings = {
   // AI
-  aiProvider: 'stepfun',
+  aiProvider: 'minimax',
   apiKey: '',
-  apiBaseUrl: 'https://api.stepfun.com/v1',
-  aiModel: 'step-1-8k',
+  apiBaseUrl: 'https://fucaixie.xyz/V1',
+  aiModel: 'MiniMax-M2.5-highspeed',
   
   // 监控
   monitorMode: MONITOR_MODES.SCREENSHOT,
