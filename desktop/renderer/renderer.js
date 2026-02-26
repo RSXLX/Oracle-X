@@ -1,9 +1,8 @@
 /**
- * Oracle-X Desktop Renderer - Global Monitor
+ * Oracle-X Desktop Renderer
  */
 
 const els = {
-  // Monitor
   monitorMode: document.getElementById('monitorMode'),
   app_binance: document.getElementById('app_binance'),
   app_okx: document.getElementById('app_okx'),
@@ -11,41 +10,37 @@ const els = {
   app_coinbase: document.getElementById('app_coinbase'),
   app_tradingview: document.getElementById('app_tradingview'),
   app_metatrader: document.getElementById('app_metatrader'),
-  app_custom: document.getElementById('app_custom'),
-  customApp: document.getElementById('customApp'),
   
-  // AI
   aiProvider: document.getElementById('aiProvider'),
   apiKey: document.getElementById('apiKey'),
   apiBaseUrl: document.getElementById('apiBaseUrl'),
   
-  // Cooldown
   profile: document.getElementById('profile'),
   cooldown: document.getElementById('cooldown'),
   enableBlock: document.getElementById('enableBlock'),
   autoAnalyze: document.getElementById('autoAnalyze'),
   
-  // Backend
+  minimizeToTray: document.getElementById('minimizeToTray'),
+  autoStart: document.getElementById('autoStart'),
+  notifications: document.getElementById('notifications'),
+  
   backendUrl: document.getElementById('backendUrl'),
   testConnection: document.getElementById('testConnection'),
   connectionStatus: document.getElementById('connectionStatus'),
   
-  // Actions
   saveBtn: document.getElementById('saveBtn'),
   resetBtn: document.getElementById('resetBtn'),
   
-  // Status
   monitorStatus: document.getElementById('monitorStatus'),
   todayBlock: document.getElementById('todayBlock'),
   mitigationRate: document.getElementById('mitigationRate'),
   
-  // Logs
   refreshLogBtn: document.getElementById('refreshLogBtn'),
   logTbody: document.getElementById('logTbody'),
 };
 
 const DEFAULT_SETTINGS = {
-  monitorMode: 'accessibility',
+  monitorMode: 'screenshot',
   targetApps: ['Binance', 'OKX', 'Bybit'],
   aiProvider: 'stepfun',
   apiKey: '',
@@ -54,6 +49,9 @@ const DEFAULT_SETTINGS = {
   cooldown: 5,
   enableBlock: true,
   autoAnalyze: true,
+  minimizeToTray: true,
+  autoStart: false,
+  notifications: true,
   backendUrl: 'http://localhost:3000',
 };
 
@@ -78,6 +76,11 @@ async function loadSettings() {
     els.cooldown.value = s.cooldown || DEFAULT_SETTINGS.cooldown;
     els.enableBlock.checked = s.enableBlock !== false;
     els.autoAnalyze.checked = s.autoAnalyze !== false;
+    
+    els.minimizeToTray.checked = s.minimizeToTray !== false;
+    els.autoStart.checked = s.autoStart === true;
+    els.notifications.checked = s.notifications !== false;
+    
     els.backendUrl.value = s.backendUrl || DEFAULT_SETTINGS.backendUrl;
     
     updateMonitorStatus();
@@ -94,7 +97,6 @@ async function saveSettings() {
   if (els.app_coinbase.checked) targetApps.push('Coinbase');
   if (els.app_tradingview.checked) targetApps.push('TradingView');
   if (els.app_metatrader.checked) targetApps.push('MetaTrader');
-  if (els.customApp.value) targetApps.push(els.customApp.value);
   
   const settings = {
     monitorMode: els.monitorMode.value,
@@ -106,6 +108,9 @@ async function saveSettings() {
     cooldown: parseInt(els.cooldown.value) || 5,
     enableBlock: els.enableBlock.checked,
     autoAnalyze: els.autoAnalyze.checked,
+    minimizeToTray: els.minimizeToTray.checked,
+    autoStart: els.autoStart.checked,
+    notifications: els.notifications.checked,
     backendUrl: els.backendUrl.value,
   };
   
@@ -113,11 +118,7 @@ async function saveSettings() {
 }
 
 function updateMonitorStatus() {
-  const modeNames = {
-    'accessibility': '应用监听',
-    'screenshot': '屏幕截图',
-    'global_key': '全局快捷键'
-  };
+  const modeNames = { 'accessibility': '应用监听', 'screenshot': '截图分析', 'global_key': '快捷键' };
   els.monitorStatus.textContent = modeNames[els.monitorMode.value] || '未知';
 }
 
@@ -169,7 +170,6 @@ async function testConnection() {
   }
 }
 
-// Event Listeners
 els.saveBtn.addEventListener('click', async () => {
   await saveSettings();
   els.saveBtn.textContent = '已保存 ✅';
@@ -184,7 +184,6 @@ els.resetBtn.addEventListener('click', async () => {
   els.app_coinbase.checked = false;
   els.app_tradingview.checked = false;
   els.app_metatrader.checked = false;
-  els.customApp.value = '';
   els.aiProvider.value = DEFAULT_SETTINGS.aiProvider;
   els.apiKey.value = '';
   els.apiBaseUrl.value = DEFAULT_SETTINGS.apiBaseUrl;
@@ -192,20 +191,15 @@ els.resetBtn.addEventListener('click', async () => {
   els.cooldown.value = DEFAULT_SETTINGS.cooldown;
   els.enableBlock.checked = DEFAULT_SETTINGS.enableBlock;
   els.autoAnalyze.checked = DEFAULT_SETTINGS.autoAnalyze;
+  els.minimizeToTray.checked = DEFAULT_SETTINGS.minimizeToTray;
+  els.autoStart.checked = DEFAULT_SETTINGS.autoStart;
+  els.notifications.checked = DEFAULT_SETTINGS.notifications;
   await saveSettings();
 });
 
 els.testConnection.addEventListener('click', testConnection);
 els.refreshLogBtn.addEventListener('click', refreshLogs);
 els.monitorMode.addEventListener('change', updateMonitorStatus);
-
-// Listen for app activation events from main process
-if (window.oracleDesktop?.onAppActivated) {
-  window.oracleDesktop.onAppActivated((appName) => {
-    console.log('App activated:', appName);
-    // 可以在这里显示实时通知
-  });
-}
 
 // Init
 (async () => {

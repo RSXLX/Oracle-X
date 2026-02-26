@@ -1,6 +1,6 @@
 /**
- * Oracle-X Desktop - Main Process
- * 支持全局应用监听 + 截图 AI 分析 + 系统托盘
+ * Oracle-X Desktop - Main Process (完整版)
+ * 全局应用监听 + 截图 AI 分析 + 系统托盘 + 通知 + 开机自启动
  */
 
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
@@ -8,26 +8,39 @@ const path = require('path');
 const { GlobalAppMonitor, MONITOR_MODES } = require('./monitor');
 const { ScreenshotAnalyzer } = require('./screenshot-analyzer');
 const { TrayManager } = require('./tray-manager');
+const { AutoStartManager } = require('./auto-start');
+const { NotificationManager } = require('./notification-manager');
 
 const isDev = process.env.NODE_ENV !== 'production';
 const PORT = isDev ? 3000 : 3000;
 
 let mainWindow = null;
 let trayManager = null;
+let autoStartManager = null;
+let notificationManager = null;
 let monitor = null;
 let screenshotAnalyzer = null;
 
 let settings = {
+  // AI
   aiProvider: 'stepfun',
   apiKey: '',
   apiBaseUrl: 'https://api.stepfun.com/v1',
   aiModel: 'step-1-8k',
+  
+  // 监控
   monitorMode: MONITOR_MODES.SCREENSHOT,
   targetApps: ['Binance', 'OKX', 'Bybit', 'Coinbase'],
   cooldown: 5,
   enableBlock: true,
+  
+  // 系统
+  minimizeToTray: true,
+  autoStart: false,
+  notifications: true,
+  
+  // 后端
   backendUrl: `http://localhost:${PORT}`,
-  minimizeToTray: true,  // 关闭时最小化到托盘
 };
 
 function createWindow() {
@@ -45,13 +58,11 @@ function createWindow() {
     },
     backgroundColor: '#0d1117',
     show: false,
-    // 关闭时最小化到托盘
     closePolicy: settings.minimizeToTray ? 'hide' : undefined,
   });
 
   if (isDev) {
     mainWindow.loadURL(`http://localhost:${PORT}`);
-    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   }
@@ -61,21 +72,31 @@ function createWindow() {
     console.log('[Oracle-X] Desktop started');
   });
 
-  // 初始化托盘
+  // 系统托盘
   trayManager = new TrayManager(mainWindow);
   trayManager.create();
+
+  // 通知管理器
+  notificationManager = new NotificationManager();
+  notificationManager.setEnabled(settings.notifications);
 }
 
-function initScreenshotAnalyzer() {
+function initManagers() {
+  // 截图分析器
   screenshotAnalyzer = new ScreenshotAnalyzer({
     visionProvider: settings.aiProvider,
     apiKey: settings.apiKey,
     apiBaseUrl: settings.apiBaseUrl,
     model: settings.aiModel,
   });
-}
 
-function initMonitor() {
+  // 开机自启动
+  autoStartManager = new AutoStartManager();
+  if (settings.autoStart) {
+    autoStartManager.enable();
+  }
+
+  // 全局监听器
   monitor = new GlobalAppMonitor({
     mode: settings.monitorMode,
     targetApps: settings.targetApps,
@@ -83,7 +104,13 @@ function initMonitor() {
     onAppActivated: async (appName) => {
       console.log('[Monitor] App activated:', appName);
       if (mainWindow) mainWindow.webContents.send('app-activated', appName);
-      if (settings.enableBlock) await showFomoWarning(appName);
+      
+      if (settings.enableBlock) {
+        const proceed = await showFomoWarning(appName);
+        if (!proceed) {
+          notificationManager.showRiskMitigated();
+        }
+      }
     },
     
     onScreenshot: async (screenshotPath) => {
@@ -92,9 +119,21 @@ function initMonitor() {
         try {
           const result = await screenshotAnalyzer.analyze(screenshotPath);
           console.log('[Analyzer] Result:', result);
-          if (mainWindow) mainWindow.webContents.send('screenshot-analyzed', result);
+          
+          if (mainWindow) {
+            mainWindow.webContents.send('screenshot-analyzed', result);
+          }
+          
+          // 系统通知
+          if (result.action === 'block' && settings.notifications) {
+            notificationManager.showTradeWarning(result.platform || 'Trading App', result.buttons);
+          }
+          
           if (result.action === 'block' && settings.enableBlock) {
-            await showFomoWarning(result.platform || 'Trading App', result);
+            const proceed = await showFomoWarning(result.platform || 'Trading App', result);
+            if (!proceed) {
+              notificationManager.showRiskMitigated();
+            }
           }
         } catch (err) {
           console.error('[Analyzer] Error:', err.message);
@@ -132,9 +171,34 @@ function setupIPC() {
   ipcMain.handle('getSettings', () => settings);
 
   ipcMain.handle('saveSettings', (event, newSettings) => {
+    const oldSettings = { ...settings };
     settings = { ...settings, ...newSettings };
-    if (monitor) { monitor.targetApps = settings.targetApps; monitor.mode = settings.monitorMode; }
-    if (screenshotAnalyzer) screenshotAnalyzer.configure({ visionProvider: settings.aiProvider, apiKey: settings.apiKey, apiBaseUrl: settings.apiBaseUrl, model: settings.aiModel });
+    
+    // 更新各模块
+    if (monitor) {
+      monitor.targetApps = settings.targetApps;
+      monitor.mode = settings.monitorMode;
+    }
+    
+    if (screenshotAnalyzer) {
+      screenshotAnalyzer.configure({
+        visionProvider: settings.aiProvider,
+        apiKey: settings.apiKey,
+        apiBaseUrl: settings.apiBaseUrl,
+        model: settings.aiModel,
+      });
+    }
+    
+    // 自启动
+    if (autoStartManager && settings.autoStart !== oldSettings.autoStart) {
+      autoStartManager.toggle(settings.autoStart);
+    }
+    
+    // 通知
+    if (notificationManager) {
+      notificationManager.setEnabled(settings.notifications);
+    }
+    
     return true;
   });
 
@@ -170,12 +234,10 @@ function setupIPC() {
 app.whenReady().then(() => {
   createWindow();
   setupIPC();
-  initScreenshotAnalyzer();
-  initMonitor();
+  initManagers();
 });
 
 app.on('window-all-closed', () => {
-  // macOS 上不退出，保持托盘运行
   if (process.platform !== 'darwin') app.quit();
 });
 

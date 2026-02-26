@@ -16,7 +16,6 @@
       <!-- 监控模式 -->
       <section class="card">
         <h2>👁️ 全局监控设置</h2>
-        <p class="hint">选择监控模式，监听任意应用</p>
         
         <div class="form-group">
           <label>监控模式
@@ -30,38 +29,12 @@
 
         <div class="source-section">
           <h3>监听目标应用</h3>
-          <label class="checkbox">
-            <input type="checkbox" id="app_binance" checked />
-            Binance
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="app_okx" checked />
-            OKX
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="app_bybit" checked />
-            Bybit
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="app_coinbase" />
-            Coinbase
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="app_tradingview" />
-            TradingView
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="app_metatrader" />
-            MetaTrader
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="app_custom" />
-            自定义应用...
-          </label>
-        </div>
-
-        <div class="form-group">
-          <label>自定义应用名称 <input type="text" id="customApp" placeholder="如：Robinhood" /></label>
+          <label class="checkbox"><input type="checkbox" id="app_binance" checked /> Binance</label>
+          <label class="checkbox"><input type="checkbox" id="app_okx" checked /> OKX</label>
+          <label class="checkbox"><input type="checkbox" id="app_bybit" checked /> Bybit</label>
+          <label class="checkbox"><input type="checkbox" id="app_coinbase" /> Coinbase</label>
+          <label class="checkbox"><input type="checkbox" id="app_tradingview" /> TradingView</label>
+          <label class="checkbox"><input type="checkbox" id="app_metatrader" /> MetaTrader</label>
         </div>
       </section>
 
@@ -100,23 +73,23 @@
         <div class="form-group">
           <label>冷静时间（秒）<input type="number" id="cooldown" value="5" min="0" max="60" /></label>
         </div>
-        <label class="checkbox">
-          <input type="checkbox" id="enableBlock" checked />
-          启用阻断弹窗
-        </label>
-        <label class="checkbox">
-          <input type="checkbox" id="autoAnalyze" checked />
-          自动 AI 分析
-        </label>
+        <label class="checkbox"><input type="checkbox" id="enableBlock" checked /> 启用阻断弹窗</label>
+        <label class="checkbox"><input type="checkbox" id="autoAnalyze" checked /> 自动 AI 分析</label>
+      </section>
+
+      <!-- 系统设置 -->
+      <section class="card">
+        <h2>🖥️ 系统设置</h2>
+        <label class="checkbox"><input type="checkbox" id="minimizeToTray" checked /> 关闭时最小化到托盘</label>
+        <label class="checkbox"><input type="checkbox" id="autoStart" /> 开机自启动</label>
+        <label class="checkbox"><input type="checkbox" id="notifications" checked /> 启用系统通知</label>
       </section>
 
       <!-- 后端连接 -->
       <section class="card">
         <h2>🔌 后端连接</h2>
         <div class="form-group">
-          <label>后端 API 地址
-            <input type="text" id="backendUrl" placeholder="http://localhost:3000" />
-          </label>
+          <label>后端 API 地址 <input type="text" id="backendUrl" placeholder="http://localhost:3000" /></label>
         </div>
         <button id="testConnection" class="btn btn-secondary">测试连接</button>
         <span id="connectionStatus" class="status"></span>
@@ -132,18 +105,9 @@
       <section class="card">
         <h2>📊 监控状态</h2>
         <div class="stats-grid">
-          <div class="stat">
-            <span class="stat-label">监控模式</span>
-            <span class="stat-value" id="monitorStatus">应用监听</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">今日阻断</span>
-            <span class="stat-value" id="todayBlock">0</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">风险化解</span>
-            <span class="stat-value" id="mitigationRate">0%</span>
-          </div>
+          <div class="stat"><span class="stat-label">监控模式</span><span class="stat-value" id="monitorStatus">截图分析</span></div>
+          <div class="stat"><span class="stat-label">今日阻断</span><span class="stat-value" id="todayBlock">0</span></div>
+          <div class="stat"><span class="stat-label">风险化解</span><span class="stat-value" id="mitigationRate">0%</span></div>
         </div>
       </section>
 
@@ -153,17 +117,8 @@
         <button id="refreshLogBtn" class="btn btn-secondary">刷新</button>
         <div class="tableWrap">
           <table>
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th>应用</th>
-                <th>动作</th>
-                <th>结果</th>
-              </tr>
-            </thead>
-            <tbody id="logTbody">
-              <tr><td colspan="4" class="muted">暂无数据</td></tr>
-            </tbody>
+            <thead><tr><th>时间</th><th>应用</th><th>动作</th><th>结果</th></tr></thead>
+            <tbody id="logTbody"><tr><td colspan="4" class="muted">暂无数据</td></tr></tbody>
           </table>
         </div>
       </section>
