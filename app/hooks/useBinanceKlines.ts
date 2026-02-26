@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 
 // K线数据类型
 export interface KlineData {
@@ -127,7 +128,7 @@ export function useBinanceKlines(
 
   // 启用 Mock 模式
   const enableMockMode = useCallback(() => {
-    console.warn('Switching to Mock Mode...');
+    logger.warn('Switching to Mock Mode...');
     setUsingMock(true);
     mockModeRef.current = true;
     setError(null); // 清除错误，因为 Mock 是预期的回退
@@ -203,7 +204,7 @@ export function useBinanceKlines(
       setUsingMock(false); // 成功获取数据，关闭 Mock
       mockModeRef.current = false;
     } catch (err) {
-      console.warn('Fetch failed, falling back to mock:', err);
+      logger.warn('Fetch failed, falling back to mock:', err);
       enableMockMode();
     }
   }, [symbol, interval, limit, transformKline, enableMockMode]);
@@ -266,7 +267,7 @@ export function useBinanceKlines(
       };
 
       ws.onerror = () => {
-        console.warn('WS Error, falling back to mock mode');
+        logger.warn('WS Error, falling back to mock mode');
         enableMockMode();
       };
 

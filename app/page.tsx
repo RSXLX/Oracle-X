@@ -8,6 +8,7 @@ import TimeframeSelector from './components/TimeframeSelector';
 import IndicatorPanel from './components/IndicatorPanel';
 import SentimentPanel from './components/SentimentPanel';
 import styles from './page.module.css';
+import { logger } from '@/lib/logger';
 
 // 动态导入 K 线图（避免 SSR 问题）
 const KlineChart = dynamic(() => import('./components/KlineChart'), { ssr: false });
@@ -161,7 +162,7 @@ export default function Home() {
       setAnalysisPhase(3);
 
     } catch (error) {
-      console.error('Analysis error:', error);
+      logger.error('Analysis error:', error);
       setStreamText('分析过程中出现错误，请重试。');
       setStatus('result');
     }

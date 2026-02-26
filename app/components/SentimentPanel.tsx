@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import styles from './SentimentPanel.module.css';
+import { logger } from '@/lib/logger';
 
 interface TweetData {
   id: string;
@@ -65,7 +66,7 @@ export default function SentimentPanel({ symbol }: SentimentPanelProps) {
       const result = await response.json();
       setData(result);
     } catch (err) {
-      console.error('Sentiment fetch error:', err);
+      logger.error('Sentiment fetch error:', err);
       setError('Unable to load Twitter sentiment');
     } finally {
       setLoading(false);
