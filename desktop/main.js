@@ -40,7 +40,7 @@ let settings = {
   apiKey: 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq',
   apiBaseUrl: 'https://mydmx.huoyuanqudao.cn/v1',
   aiModel: 'MiniMax-M2.5-highspeed',
-  monitorMode: MONITOR_MODES.SCREENSHOT,
+  monitorMode: MONITOR_MODES.ACCESSIBILITY,
   targetApps: ['Binance', 'OKX', 'Bybit', 'Coinbase'],
   cooldown: 5,
   enableBlock: true,
@@ -67,7 +67,7 @@ function createWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   } else {
     mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   }
@@ -158,7 +158,7 @@ function registerHotkeys() {
   globalShortcut.register('CommandOrControl+Shift+S', async () => {
     const { exec } = require('child_process');
     const tmpFile = `/tmp/oraclex_${Date.now()}.png`;
-    exec(`screencapture -x ${tmpFile}`, async (err) => {
+    exec(`/usr/sbin//usr/sbin/screencapture -x ${tmpFile}`, async (err) => {
       if (!err && screenshotAnalyzer) {
         const result = await screenshotAnalyzer.analyze(tmpFile);
         if (mainWindow) mainWindow.webContents.send('screenshot-result', result);
@@ -252,7 +252,7 @@ function setupIPC() {
     const { exec } = require('child_process');
     return new Promise((resolve) => {
       const tmpFile = `/tmp/oraclex_${Date.now()}.png`;
-      exec(`screencapture -x ${tmpFile}`, (err) => resolve(err ? null : tmpFile));
+      exec(`/usr/sbin//usr/sbin/screencapture -x ${tmpFile}`, (err) => resolve(err ? null : tmpFile));
     });
   });
 
