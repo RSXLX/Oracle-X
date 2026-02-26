@@ -10,7 +10,7 @@ const { TrayManager } = require('./tray-manager');
 const { AutoStartManager } = require('./auto-start');
 const { NotificationManager } = require('./notification-manager');
 const { WalletAnalyzer } = require('./wallet-analyzer');
-const { CSVTradeImporter } = require('./csv-importer');
+const { EnhancedCSVImporter as CSVTradeImporter } = require('./csv-importer');
 
 const isDev = process.env.NODE_ENV !== 'production';
 const PORT = isDev ? 3000 : 3000;
