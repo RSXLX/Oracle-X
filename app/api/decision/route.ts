@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateAnalyzeRequest } from '@/lib/validators';
 import { errorResponse, getRequestId } from '@/lib/api-error';
 import { evaluateNoFomo } from '@/lib/no-fomo';
+import { appendDecisionLog } from '@/lib/decision-log';
 
 export const runtime = 'nodejs';
 
@@ -29,6 +30,23 @@ export async function POST(request: NextRequest) {
     twitterSentiment: data.marketData.twitterSentiment?.overallSentiment || null,
     twitterConfidence: data.marketData.twitterSentiment?.confidencePercent || null,
   });
+
+  try {
+    appendDecisionLog({
+      requestId,
+      symbol: data.symbol,
+      direction: data.direction,
+      decision,
+      marketData: {
+        price: data.marketData.price,
+        change24h: data.marketData.change24h,
+        fearGreedIndex: data.marketData.fearGreedIndex,
+      },
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Failed to append decision log:', error);
+  }
 
   return NextResponse.json(
     {
