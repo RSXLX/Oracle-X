@@ -473,3 +473,46 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* Stage Indicator */
+.stage-section {
+  margin-bottom: 12px;
+}
+
+.stage-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.stage-icon {
+  font-size: 14px;
+}
+
+.stage-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stage-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.stage-item.active {
+  background: rgba(79, 124, 255, 0.15);
+  color: var(--text-primary);
+  border-left: 3px solid var(--accent-blue);
+}

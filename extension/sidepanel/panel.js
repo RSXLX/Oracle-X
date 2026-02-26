@@ -41,7 +41,10 @@ const elements = {
   conclusionBadge: document.getElementById('conclusionBadge'),
   // Twitter 元素
   twitterSection: document.getElementById('twitterSection'),
-  twitterContent: document.getElementById('twitterContent')
+  twitterContent: document.getElementById('twitterContent'),
+  // 分析阶段元素
+  stageSection: document.getElementById('stageSection'),
+  stageContent: document.getElementById('stageContent'),
 };
 
 /**
@@ -143,6 +146,7 @@ function handleMessage(message) {
  */
 function renderRecognizing() {
   hideStatus();
+  showStageIndicator('recognizing', '正在识别交易页面...');
   elements.recognizeContent.innerHTML = `
     <div class="loading-state">
       <div class="spinner"></div>
@@ -159,6 +163,7 @@ function renderRecognizing() {
  * 渲染识别结果
  */
 function renderRecognizeResult() {
+  updateStageIndicator('recognized', `已识别: ${state.recognizeResult?.platform || 'Unknown'} ${state.recognizeResult?.pair || ''}`);
   const result = state.recognizeResult;
   
   if (!result || (!result.platform && !result.pair)) {
@@ -238,6 +243,8 @@ async function handleIntentSelect(intent) {
       <span>正在计算 NoFOMO 风险...</span>
     </div>
   `;
+
+  showStageIndicator('nofomo', 'NoFOMO 冷静层检查中...');
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -362,6 +369,7 @@ function cancelNoFomoFlow() {
  * 渲染流式分析内容
  */
 function renderAnalysisStream() {
+  updateStageIndicator('analyzing', 'AI 分析中...');
   elements.analysisContent.innerHTML = state.analysisText + '<span class="cursor-blink">▊</span>';
   elements.analysisContent.scrollTop = elements.analysisContent.scrollHeight;
   
@@ -373,6 +381,7 @@ function renderAnalysisStream() {
  * 渲染分析完成
  */
 function renderAnalysisComplete() {
+  hideStageIndicator();
   elements.analysisContent.innerHTML = state.analysisText;
   
   // 更新最终分数
@@ -436,6 +445,7 @@ function updateScoreFromText(text) {
  * 渲染结论徽章
  */
 function renderConclusion() {
+  hideStageIndicator();
   const text = state.analysisText.toLowerCase();
   let riskLevel = 'medium';
   let title = '🟡 建议观望';
@@ -485,6 +495,38 @@ function showStatus(message, code, requestId) {
 function hideStatus() {
   elements.statusSection.classList.add('hidden');
   elements.statusContent.innerHTML = '';
+}
+
+/**
+ * 分析阶段指示器
+ */
+function showStageIndicator(stage, message) {
+  if (!elements.stageSection || !elements.stageContent) return;
+  elements.stageSection.classList.remove('hidden');
+  const stageIcons = {
+    idle: '⏳',
+    recognizing: '🔍',
+    recognized: '✅',
+    nofomo: '🧊',
+    analyzing: '⚡',
+    complete: '🎯'
+  };
+  elements.stageContent.innerHTML = `
+    <div class="stage-item active">
+      <span class="stage-icon">${stageIcons[stage] || '⏳'}</span>
+      <span>${message}</span>
+    </div>
+  `;
+}
+
+function updateStageIndicator(stage, message) {
+  showStageIndicator(stage, message);
+}
+
+function hideStageIndicator() {
+  if (elements.stageSection) {
+    elements.stageSection.classList.add('hidden');
+  }
 }
 
 /**
