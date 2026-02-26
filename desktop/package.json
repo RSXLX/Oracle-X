@@ -20,7 +20,9 @@
     },
     "mac": {
       "category": "public.app-category.finance",
-      "target": ["dir"],
+      "target": [
+        "dir"
+      ],
       "icon": "icons/icon.png"
     },
     "files": [
@@ -31,5 +33,8 @@
   "devDependencies": {
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "uiohook-napi": "^1.5.4"
   }
 }
