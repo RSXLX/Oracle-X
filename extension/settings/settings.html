@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oracle-X 设置</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🔮</span>
+        <span class="logo-text">Oracle-X</span>
+      </div>
+      <span class="version-badge">设置</span>
+    </header>
+
+    <!-- API 配置 -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-icon">🔑</span> API 配置
+      </div>
+      <div class="field">
+        <label for="apiBaseUrl">API 基础地址</label>
+        <input type="text" id="apiBaseUrl" placeholder="http://localhost:3000" />
+        <span class="field-hint">Next.js 后端服务地址</span>
+      </div>
+    </section>
+
+    <!-- 风险控制 -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-icon">🛡️</span> 风险控制
+      </div>
+      <div class="field">
+        <label for="riskProfile">风险档位</label>
+        <select id="riskProfile">
+          <option value="conservative">保守型 – 低容忍度，严格拦截</option>
+          <option value="balanced" selected>平衡型 – 适中拦截</option>
+          <option value="aggressive">积极型 – 仅极端情况拦截</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="coolingTime">冷静期 (秒)</label>
+        <input type="number" id="coolingTime" min="5" max="120" value="20" />
+        <span class="field-hint">触发 WARN/BLOCK 后的冷静等待时间</span>
+      </div>
+      <div class="field checkbox-field">
+        <input type="checkbox" id="enableNoFomoBlock" checked />
+        <label for="enableNoFomoBlock">启用 NoFOMO 强制阻断</label>
+      </div>
+    </section>
+
+    <!-- 平台监控 -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-icon">👁️</span> 平台监控
+      </div>
+      <div class="platforms-grid" id="platformsGrid">
+        <!-- JS 动态生成 -->
+      </div>
+    </section>
+
+    <!-- 操作栏 -->
+    <div class="actions">
+      <button id="saveBtn" class="btn btn-primary">💾 保存设置</button>
+      <button id="resetBtn" class="btn btn-secondary">↺ 重置默认</button>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>
