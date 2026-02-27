@@ -1,38 +1,53 @@
-# Oracle-X 产品架构（双端）
+# Oracle-X 产品架构（双端 + Web）
 
 ## 产品形态
 
-### 1. Chrome Extension（拦截端）
-- 自动注入目标交易平台页面
+### 1. Web App（分析端）
+- Next.js 14 + React 18 实时行情 + K 线图
+- 技术指标面板（RSI/MACD/BB/ATR）
+- AI 流式分析弹窗 + 三级风险建议
+- Decision Log 看板（筛选/导出/复盘）
+- 12 个后端 API 路由
+
+### 2. Chrome Extension（拦截端）
+- 自动注入 8 大交易平台页面
 - 监听买入/卖出按钮点击 → 触发冷静层
 - 调用视觉 AI 分析截图
-- 与 Desktop App 通信
+- Side Panel 流式分析展示
+- **设置页面**配置 API/风险/平台参数
 
-### 2. Desktop App（管理端）
+### 3. Desktop App（管理端）
 - 用户配置：AI API Key、风险档位、冷静时间
-- 实时监控：拦截记录、决策日志
-- 复盘分析：拦截率、误报率、收益追踪
-- 数据持久化本地存储
+- 全局监控：截图 AI 检测 + 按钮监听
+- 钱包分析：ETH/BSC/SOL 链上交易
+- CSV 导入：支持 7+ 交易所
+- 风险引擎：综合评分 + 优化建议
+- 系统托盘 + 开机自启
 
 ## 数据流
 
 ```
 [交易平台页面]
-      ↓ 点击按钮
+      ↓ 按钮点击拦截
 [Chrome Extension] → 截图 → 视觉 AI 分析
       ↓ 决策
 [冷静层弹窗] ←→ [Desktop App]
       ↓
 [决策日志] → 本地存储
+
+[Web App] ←→ [Next.js API]
+      ↓
+[Binance] + [Twitter] + [AI 引擎]
 ```
 
 ## 下一阶段开发
 
-### Desktop App 功能
-1. 设置页：API Key、风险档位、冷静时间配置
-2. 监控面板：实时拦截记录流
-3. 复盘面板：统计图表（拦截率、趋势）
+### P1 增强
+1. `/api/analyze` 输出更结构化的阶段事件
+2. Side Panel 增加"分析阶段"可视化
+3. 完善错误态文案与重试策略
 
-### 与 Extension 通信
-- 使用 chrome.storage 或本地 Server 通信
-- Extension 推送拦截事件 → Desktop 展示
+### P2 交付
+1. Desktop DMG 打包
+2. Extension release 打包
+3. 准备 release 版本标签

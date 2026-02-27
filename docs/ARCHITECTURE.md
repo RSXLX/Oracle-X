@@ -158,16 +158,22 @@
 ## 6. 待完成事项
 
 ### 高优先级
-- [ ] Desktop 打包测试
-- [ ] 实际运行验证
+- [x] Desktop 打包测试（Electron 启动验证通过）
+- [x] 实际运行验证（`npm run build` + `tsc --noEmit` 通过）
 
 ### 中优先级  
-- [ ] 实时市场数据整合
+- [ ] 实时市场数据整合（`market-data.js` 待集成）
 - [ ] 打包构建 (DMG)
 
 ### 低优先级
 - [ ] Linux 支持
 - [ ] Windows 支持
+
+### 已完成（2026-02-27）
+- [x] 代理硬编码 → `HTTP_PROXY` 环境变量
+- [x] Extension 设置页（settings.html/js/css）
+- [x] 3 个新 API（`/api/market`、`/api/trade/history`、`/api/data/refine`）
+- [x] README 重写 + EXTENSION_USAGE.md + 验收文档
 
 ---
 

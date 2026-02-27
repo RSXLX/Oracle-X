@@ -16,7 +16,8 @@ import { ProxyAgent, fetch as proxyFetch } from 'undici';
 
 export const runtime = 'nodejs';
 
-const proxyAgent = new ProxyAgent('http://127.0.0.1:7892');
+const HTTP_PROXY = process.env.HTTP_PROXY || '';
+const proxyAgent = HTTP_PROXY ? new ProxyAgent(HTTP_PROXY) : null;
 const AI_TIMEOUT_MS = 45000;
 
 export async function POST(request: NextRequest) {
@@ -70,10 +71,15 @@ export async function POST(request: NextRequest) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000);
 
+        const fetchUrl = (url: string) =>
+          proxyAgent
+            ? proxyFetch(url, { signal: controller.signal, dispatcher: proxyAgent })
+            : fetch(url, { signal: controller.signal });
+
         const [res1h, res4h, res1d] = await Promise.allSettled([
-          proxyFetch(urls['1h'], { signal: controller.signal, dispatcher: proxyAgent }),
-          proxyFetch(urls['4h'], { signal: controller.signal, dispatcher: proxyAgent }),
-          proxyFetch(urls['1d'], { signal: controller.signal, dispatcher: proxyAgent }),
+          fetchUrl(urls['1h']),
+          fetchUrl(urls['4h']),
+          fetchUrl(urls['1d']),
         ]);
         clearTimeout(timeoutId);
 
