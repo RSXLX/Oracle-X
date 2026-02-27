@@ -1,12 +1,13 @@
 /**
- * Oracle-X Desktop - 最终整合版
- * 包含所有功能模块
+ * Oracle-X Desktop - 最终整合版 (MySQL)
+ * 包含所有功能模块，数据存储使用 MySQL
  */
 
 const { app, BrowserWindow, ipcMain, screen, globalShortcut, dialog, Menu, Tray } = require('electron');
 const path = require('path');
 
 // 模块导入
+const Database = require('./database');
 const { GlobalAppMonitor, MONITOR_MODES } = require('./monitor');
 const { ScreenshotAnalyzer } = require('./screenshot-analyzer');
 const { TrayManager } = require('./tray-manager');
@@ -19,6 +20,9 @@ const { RiskEngine } = require('./risk-engine');
 const { DataExporter } = require('./data-exporter');
 const { HotkeyManager } = require('./hotkey-manager');
 const { AITradeAnalyzer } = require('./ai-trade-analyzer');
+const { SettingsStorage } = require('./settings-storage');
+const { StatsTracker } = require('./stats-tracker');
+const { DecisionLogger } = require('./decision-logger');
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -35,6 +39,10 @@ let riskEngine = null;
 let dataExporter = null;
 let hotkeyManager = null;
 let aiTradeAnalyzer = null;
+let settingsStorage = null;
+let statsTracker = null;
+let decisionLogger = null;
+let db = null;
 
 // 默认设置（AI 配置硬编码）
 let settings = {
@@ -84,7 +92,30 @@ function createWindow() {
   notificationManager.setEnabled(settings.notifications);
 }
 
-function initAll() {
+async function initAll() {
+  // ===== 初始化 MySQL 连接 =====
+  try {
+    db = await Database.init();
+    console.log('[Oracle-X] Database ready');
+  } catch (err) {
+    console.error('[Oracle-X] Database init failed:', err.message);
+    dialog.showErrorBox('数据库错误', `MySQL 连接失败: ${err.message}\n\n请确保 MySQL 已启动 (brew services start mysql)`);
+    return;
+  }
+
+  // ===== 设置存储 =====
+  settingsStorage = new SettingsStorage(db);
+  const savedSettings = await settingsStorage.load();
+  if (savedSettings && Object.keys(savedSettings).length > 0) {
+    settings = { ...settings, ...savedSettings };
+  }
+
+  // ===== 统计追踪 =====
+  statsTracker = new StatsTracker(db);
+
+  // ===== 决策日志 =====
+  decisionLogger = new DecisionLogger(db);
+
   // 截图分析器
   screenshotAnalyzer = new ScreenshotAnalyzer({
     visionProvider: settings.aiProvider,
@@ -97,10 +128,8 @@ function initAll() {
   autoStartManager = new AutoStartManager();
   if (settings.autoStart) autoStartManager.enable();
 
-  // 钱包分析
-  walletAnalyzer = new WalletAnalyzer();
-  walletAnalyzer.init();
-  walletAnalyzer.loadFromLocal(); // 启动时加载已保存的钱包
+  // 钱包分析（传入 db）
+  walletAnalyzer = new WalletAnalyzer(db);
 
   // CSV/XLSX 导入
   csvImporter = new EnhancedCSVImporter();
@@ -214,8 +243,9 @@ async function showFomoWarning(appName, analysis = null) {
 function setupIPC() {
   // ==================== 设置 ====================
   ipcMain.handle('getSettings', () => settings);
-  ipcMain.handle('saveSettings', (event, newSettings) => {
+  ipcMain.handle('saveSettings', async (event, newSettings) => {
     settings = { ...settings, ...newSettings };
+    if (settingsStorage) await settingsStorage.save(settings);
     if (monitor) { monitor.targetApps = settings.targetApps; monitor.mode = settings.monitorMode; }
     if (screenshotAnalyzer) screenshotAnalyzer.configure({ visionProvider: settings.aiProvider, apiKey: settings.apiKey, apiBaseUrl: settings.apiBaseUrl, model: settings.aiModel });
     if (autoStartManager && settings.autoStart) autoStartManager.toggle(settings.autoStart);
@@ -232,27 +262,30 @@ function setupIPC() {
   });
 
   // ==================== 决策日志 ====================
-  ipcMain.handle('listDecisionLogs', async () => ({ items: [] }));
+  ipcMain.handle('listDecisionLogs', async (event, limit) => {
+    if (!decisionLogger) return { items: [] };
+    const items = await decisionLogger.get(limit || 50);
+    return { items };
+  });
 
   // ==================== 钱包 ====================
-  ipcMain.handle('addWallet', (event, address, chain, label) => {
-    const result = walletAnalyzer.addWallet(address, chain, label);
-    walletAnalyzer.saveToLocal(); // 自动持久化
-    return result;
+  ipcMain.handle('addWallet', async (event, address, chain, label) => {
+    if (!walletAnalyzer) return null;
+    return walletAnalyzer.addWallet(address, chain, label);
   });
 
-  ipcMain.handle('removeWallet', (event, address) => {
-    const result = walletAnalyzer.removeWallet(address);
-    walletAnalyzer.saveToLocal();
-    return result;
+  ipcMain.handle('removeWallet', async (event, address) => {
+    if (!walletAnalyzer) return false;
+    return walletAnalyzer.removeWallet(address);
   });
 
-  ipcMain.handle('getWallets', () => walletAnalyzer.getWallets());
+  ipcMain.handle('getWallets', async () => {
+    if (!walletAnalyzer) return [];
+    return walletAnalyzer.getWallets();
+  });
 
   ipcMain.handle('getWalletTransactions', async (event, address, chain, limit) => {
-    const txs = await walletAnalyzer.fetchTransactions(address, chain, limit);
-    walletAnalyzer.saveToLocal(); // 保存交易记录到本地
-    return txs;
+    return walletAnalyzer.fetchTransactions(address, chain, limit);
   });
 
   ipcMain.handle('analyzeWallet', async (event, address, chain) => {
@@ -262,18 +295,19 @@ function setupIPC() {
 
   // AI 分析钱包交易模式
   ipcMain.handle('aiAnalyzeWallet', async (event, address, chain) => {
-    const wallet = walletAnalyzer.getWallets().find(w => w.address === address.toLowerCase());
-    let txs = wallet?.transactions || [];
+    const wallets = await walletAnalyzer.getWallets();
+    const wallet = wallets.find(w => w.address === address.toLowerCase());
+    // 优先从 DB 加载
+    let txs = await walletAnalyzer.getWalletTransactionsFromDB(address);
     if (!txs.length) {
       txs = await walletAnalyzer.fetchTransactions(address, chain, 100);
     }
     return aiTradeAnalyzer.analyzeWalletPattern(txs, { address, chain });
   });
 
-  // 钱包数据持久化
-  ipcMain.handle('saveWalletData', () => walletAnalyzer.saveToLocal());
-  ipcMain.handle('loadWalletData', () => {
-    walletAnalyzer.loadFromLocal();
+  // 钱包数据持久化（MySQL 下已自动完成，保留接口兼容）
+  ipcMain.handle('saveWalletData', () => true);
+  ipcMain.handle('loadWalletData', async () => {
     return walletAnalyzer.getWallets();
   });
 
@@ -297,10 +331,61 @@ function setupIPC() {
       const importResult = await csvImporter.parseFile(result.filePaths[0]);
       const analysis = csvImporter.analyzePattern(importResult.transactions);
       const riskAssessment = riskEngine.assessRisk(analysis);
-      return { ...importResult, analysis, risk: riskAssessment };
+
+      // ===== 持久化导入的交易记录到 MySQL =====
+      const batchId = `imp_${Date.now().toString(36)}`;
+      if (db && importResult.transactions?.length) {
+        for (const tx of importResult.transactions) {
+          const ts = tx.timestamp
+            ? new Date(tx.timestamp).toISOString().slice(0, 19).replace('T', ' ')
+            : null;
+
+          await db.execute(
+            `INSERT INTO transactions
+             (source, import_batch, timestamp, symbol, side, price, qty, total, fee, exchange, is_buy, raw_data)
+             VALUES ('import', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              batchId,
+              ts,
+              tx.symbol || '',
+              tx.side || '',
+              tx.price || 0,
+              tx.qty || 0,
+              tx.total || 0,
+              tx.fee || 0,
+              tx.exchange || '',
+              tx.isBuy ? 1 : 0,
+              JSON.stringify({ rawTime: tx.rawTime, symbolInfo: tx.symbolInfo, marketData: tx.marketData }),
+            ]
+          );
+        }
+        console.log(`[Import] Saved ${importResult.transactions.length} txs, batch: ${batchId}`);
+      }
+
+      return { ...importResult, analysis, risk: riskAssessment, batchId };
     } catch (err) {
       return { error: err.message };
     }
+  });
+
+  // ===== 查询历史导入批次 =====
+  ipcMain.handle('getImportHistory', async () => {
+    if (!db) return [];
+    const [rows] = await db.execute(
+      `SELECT import_batch, COUNT(*) as count, MIN(timestamp) as first_time, MAX(timestamp) as last_time, MAX(created_at) as imported_at, exchange
+       FROM transactions WHERE source = 'import' GROUP BY import_batch, exchange ORDER BY imported_at DESC`
+    );
+    return rows;
+  });
+
+  // ===== 按批次查询交易记录 =====
+  ipcMain.handle('getTransactionsByBatch', async (event, batchId) => {
+    if (!db) return [];
+    const [rows] = await db.execute(
+      'SELECT * FROM transactions WHERE import_batch = ? ORDER BY timestamp ASC',
+      [batchId]
+    );
+    return rows;
   });
 
   // AI 分析交易记录买卖点
@@ -336,10 +421,10 @@ function setupIPC() {
   ipcMain.handle('close', () => mainWindow?.hide());
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
   setupIPC();
-  initAll();
+  await initAll();
 });
 
 app.on('window-all-closed', () => {
@@ -351,12 +436,10 @@ app.on('activate', () => {
   else mainWindow?.show();
 });
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
   if (monitor) monitor.stop();
   if (trayManager) trayManager.destroy();
-  // 退出时自动保存钱包数据
-  if (walletAnalyzer) {
-    try { walletAnalyzer.saveToLocal(); } catch (e) { }
-  }
+  // 关闭数据库连接
+  await Database.close();
 });

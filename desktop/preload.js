@@ -31,6 +31,10 @@ contextBridge.exposeInMainWorld('oracleDesktop', {
   // File import (CSV / XLSX)
   importFile: () => ipcRenderer.invoke('importFile'),
 
+  // Import history (MySQL)
+  getImportHistory: () => ipcRenderer.invoke('getImportHistory'),
+  getTransactionsByBatch: (batchId) => ipcRenderer.invoke('getTransactionsByBatch', batchId),
+
   // AI trade analysis
   aiAnalyzeTrades: (transactions) => ipcRenderer.invoke('aiAnalyzeTrades', transactions),
 

@@ -265,7 +265,7 @@ async function importFile() {
       return;
     }
 
-    statusEl.innerHTML = `<span class="success">✅ 已导入 ${result.count} 笔交易 (${result.format})</span>`;
+    statusEl.innerHTML = `<span class="success">✅ 已导入 ${result.count} 笔交易 (${result.format}) · 已保存到数据库</span>`;
     currentTransactions = result.transactions;
 
     // 启用 AI 分析按钮
@@ -282,6 +282,9 @@ async function importFile() {
   } catch (err) {
     statusEl.innerHTML = `<span class="error">${err.message}</span>`;
   }
+
+  // 刷新历史导入列表
+  await loadImportHistory();
 }
 
 function renderCSVAnalysis(a) {
@@ -466,9 +469,55 @@ async function refreshLogs() {
   // 占位 - 决策日志功能
 }
 
+// ==================== 历史导入 ====================
+async function loadImportHistory() {
+  try {
+    const history = await window.oracleDesktop.getImportHistory();
+    const select = document.getElementById('importHistorySelect');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- 选择历史批次 --</option>';
+    for (const batch of history) {
+      const time = batch.imported_at ? new Date(batch.imported_at).toLocaleString() : '未知';
+      const option = document.createElement('option');
+      option.value = batch.import_batch;
+      option.textContent = `${batch.exchange || '未知'} · ${batch.count} 笔 · ${time}`;
+      select.appendChild(option);
+    }
+  } catch (err) {
+    console.error('Load import history error:', err);
+  }
+}
+
+async function loadHistoryBatch() {
+  const select = document.getElementById('importHistorySelect');
+  const batchId = select?.value;
+  if (!batchId) { alert('请选择一个批次'); return; }
+
+  const infoEl = document.getElementById('importHistoryInfo');
+  infoEl.innerHTML = '<div class="loading">加载中</div>';
+
+  try {
+    const txs = await window.oracleDesktop.getTransactionsByBatch(batchId);
+    currentTransactions = txs;
+    infoEl.innerHTML = `<span class="success">✅ 已加载 ${txs.length} 笔历史记录</span>`;
+
+    // 启用 AI 分析按钮
+    const aiBtn = document.getElementById('aiAnalyzeBtn');
+    if (aiBtn) aiBtn.disabled = false;
+
+    renderCSVTransactions(txs);
+  } catch (err) {
+    infoEl.innerHTML = `<span class="error">加载失败: ${err.message}</span>`;
+  }
+}
+
+document.getElementById('loadHistoryBtn')?.addEventListener('click', loadHistoryBatch);
+
 // ==================== 初始化 ====================
 (async () => {
   await loadSettings();
   await loadWallets();
   await refreshLogs();
+  await loadImportHistory();
 })();

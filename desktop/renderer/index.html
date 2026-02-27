@@ -1,175 +1,219 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Oracle-X NoFOMO</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <main class="app">
-      <header>
-        <h1>🔮 Oracle-X NoFOMO</h1>
-        <p>全局交易冷静层 · AI 交易分析助手</p>
-      </header>
 
-      <!-- 导航 -->
-      <nav class="tabs">
-        <button class="tab active" data-tab="monitor">👁️ 监控</button>
-        <button class="tab" data-tab="wallet">💰 钱包</button>
-        <button class="tab" data-tab="csv">📄 交易记录</button>
-        <button class="tab" data-tab="settings">⚙️ 设置</button>
-      </nav>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oracle-X NoFOMO</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
 
-      <!-- 监控面板 -->
-      <section id="panel-monitor" class="panel active">
-        <section class="card">
-          <h2>👁️ 全局监控</h2>
-          <div class="form-group">
-            <label>监控模式
-              <select id="monitorMode">
-                <option value="screenshot">截图 AI 分析</option>
-                <option value="accessibility">应用监听</option>
-              </select>
-            </label>
+<body>
+  <main class="app">
+    <header>
+      <h1>🔮 Oracle-X NoFOMO</h1>
+      <p>全局交易冷静层 · AI 交易分析助手</p>
+    </header>
+
+    <!-- 导航 -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="monitor">👁️ 监控</button>
+      <button class="tab" data-tab="wallet">💰 钱包</button>
+      <button class="tab" data-tab="csv">📄 交易记录</button>
+      <button class="tab" data-tab="settings">⚙️ 设置</button>
+    </nav>
+
+    <!-- 监控面板 -->
+    <section id="panel-monitor" class="panel active">
+      <section class="card">
+        <h2>👁️ 全局监控</h2>
+        <div class="form-group">
+          <label>监控模式
+            <select id="monitorMode">
+              <option value="screenshot">截图 AI 分析</option>
+              <option value="accessibility">应用监听</option>
+            </select>
+          </label>
+        </div>
+        <div class="source-section">
+          <h3>监听应用</h3>
+          <label class="checkbox"><input type="checkbox" id="app_binance" checked /> Binance</label>
+          <label class="checkbox"><input type="checkbox" id="app_okx" checked /> OKX</label>
+          <label class="checkbox"><input type="checkbox" id="app_bybit" checked /> Bybit</label>
+          <label class="checkbox"><input type="checkbox" id="app_coinbase" /> Coinbase</label>
+        </div>
+      </section>
+      <section class="card">
+        <h2>📊 今日统计</h2>
+        <div class="stats-grid">
+          <div class="stat"><span class="stat-label">阻断</span><span class="stat-value" id="todayBlock">0</span></div>
+          <div class="stat"><span class="stat-label">化解</span><span class="stat-value" id="mitigationRate">0%</span>
           </div>
-          <div class="source-section">
-            <h3>监听应用</h3>
-            <label class="checkbox"><input type="checkbox" id="app_binance" checked /> Binance</label>
-            <label class="checkbox"><input type="checkbox" id="app_okx" checked /> OKX</label>
-            <label class="checkbox"><input type="checkbox" id="app_bybit" checked /> Bybit</label>
-            <label class="checkbox"><input type="checkbox" id="app_coinbase" /> Coinbase</label>
-          </div>
-        </section>
-        <section class="card">
-          <h2>📊 今日统计</h2>
-          <div class="stats-grid">
-            <div class="stat"><span class="stat-label">阻断</span><span class="stat-value" id="todayBlock">0</span></div>
-            <div class="stat"><span class="stat-label">化解</span><span class="stat-value" id="mitigationRate">0%</span></div>
-          </div>
-        </section>
+        </div>
+      </section>
+    </section>
+
+    <!-- 钱包面板 -->
+    <section id="panel-wallet" class="panel">
+      <section class="card">
+        <h2>💰 钱包管理</h2>
+        <div class="form-group">
+          <label>选择链
+            <select id="walletChain">
+              <option value="ethereum">Ethereum</option>
+              <option value="bsc">BNB Chain (BSC)</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>钱包地址 <input type="text" id="walletAddress" placeholder="0x..." /></label>
+        </div>
+        <div class="form-group">
+          <label>备注 <input type="text" id="walletLabel" placeholder="如：主钱包" /></label>
+        </div>
+        <div class="actions">
+          <button id="addWalletBtn" class="btn btn-primary">添加钱包</button>
+          <button id="saveWalletsBtn" class="btn btn-secondary">💾 保存数据</button>
+        </div>
       </section>
 
-      <!-- 钱包面板 -->
-      <section id="panel-wallet" class="panel">
-        <section class="card">
-          <h2>💰 钱包管理</h2>
-          <div class="form-group">
-            <label>选择链
-              <select id="walletChain">
-                <option value="ethereum">Ethereum</option>
-                <option value="bsc">BNB Chain (BSC)</option>
-              </select>
-            </label>
-          </div>
-          <div class="form-group">
-            <label>钱包地址 <input type="text" id="walletAddress" placeholder="0x..." /></label>
-          </div>
-          <div class="form-group">
-            <label>备注 <input type="text" id="walletLabel" placeholder="如：主钱包" /></label>
-          </div>
-          <div class="actions">
-            <button id="addWalletBtn" class="btn btn-primary">添加钱包</button>
-            <button id="saveWalletsBtn" class="btn btn-secondary">💾 保存数据</button>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>📋 已添加钱包</h2>
-          <div id="walletList" class="wallet-list">
-            <p class="muted">暂无钱包</p>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>📊 交易分析</h2>
-          <div id="walletAnalysis">
-            <p class="muted">选择钱包查看分析</p>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>🤖 AI 钱包分析</h2>
-          <div id="walletAIAnalysis">
-            <p class="muted">点击钱包的"AI分析"按钮查看 AI 深度分析</p>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>📝 交易记录</h2>
-          <button id="refreshWalletBtn" class="btn btn-secondary">刷新记录</button>
-          <div class="tableWrap">
-            <table>
-              <thead><tr><th>时间</th><th>类型</th><th>金额</th><th>Gas</th><th>合约方法</th></tr></thead>
-              <tbody id="txTbody"><tr><td colspan="5" class="muted">暂无记录</td></tr></tbody>
-            </table>
-          </div>
-        </section>
+      <section class="card">
+        <h2>📋 已添加钱包</h2>
+        <div id="walletList" class="wallet-list">
+          <p class="muted">暂无钱包</p>
+        </div>
       </section>
 
-      <!-- 交易记录导入面板 -->
-      <section id="panel-csv" class="panel">
-        <section class="card">
-          <h2>📄 导入交易记录</h2>
-          <p class="hint">支持 CSV / XLSX 格式（Binance/OKX/Bybit/Coinbase 等交易所导出文件）</p>
-          <div class="actions">
-            <button id="importFileBtn" class="btn btn-primary">📂 导入 CSV / XLSX</button>
-            <button id="aiAnalyzeBtn" class="btn btn-accent" disabled>🤖 AI 分析买卖点</button>
-            <button id="exportReportBtn" class="btn btn-secondary">📤 导出报告</button>
-          </div>
-          <div id="csvStatus"></div>
-        </section>
-
-        <section class="card">
-          <h2>📊 交易习惯分析</h2>
-          <div id="csvAnalysis">
-            <p class="muted">导入文件后显示分析</p>
-          </div>
-        </section>
-
-        <section class="card" id="aiAnalysisCard" style="display:none;">
-          <h2>🤖 AI 买卖点分析</h2>
-          <div id="aiAnalysisResult">
-            <p class="muted">等待分析...</p>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>📝 交易明细</h2>
-          <div class="tableWrap">
-            <table>
-              <thead><tr><th>时间</th><th>交易对</th><th>方向</th><th>价格</th><th>数量</th><th>总额</th></tr></thead>
-              <tbody id="csvTbody"><tr><td colspan="6" class="muted">暂无数据</td></tr></tbody>
-            </table>
-          </div>
-        </section>
+      <section class="card">
+        <h2>📊 交易分析</h2>
+        <div id="walletAnalysis">
+          <p class="muted">选择钱包查看分析</p>
+        </div>
       </section>
 
-      <!-- 设置面板 -->
-      <section id="panel-settings" class="panel">
-        <section class="card">
-          <h2>🤖 AI 配置（已固定）</h2>
-          <div class="ai-config-info">
-            <div class="config-item"><span class="config-label">Provider</span><span class="config-value">MiniMax</span></div>
-            <div class="config-item"><span class="config-label">Model</span><span class="config-value">MiniMax-M2.5-highspeed</span></div>
-            <div class="config-item"><span class="config-label">API</span><span class="config-value">OpenAI Completions</span></div>
-            <div class="config-item"><span class="config-label">状态</span><span class="config-value badge-allow">✅ 已配置</span></div>
-          </div>
-        </section>
-        <section class="card">
-          <h2>⚙️ 冷静设置</h2>
-          <div class="form-group">
-            <label>冷静时间 <input type="number" id="cooldown" value="5" min="0" max="60" /> 秒</label>
-          </div>
-          <label class="checkbox"><input type="checkbox" id="enableBlock" checked /> 启用阻断</label>
-          <label class="checkbox"><input type="checkbox" id="autoStart" /> 开机自启</label>
-        </section>
-        <section class="actions">
-          <button id="saveBtn" class="btn btn-primary">保存配置</button>
-        </section>
+      <section class="card">
+        <h2>🤖 AI 钱包分析</h2>
+        <div id="walletAIAnalysis">
+          <p class="muted">点击钱包的"AI分析"按钮查看 AI 深度分析</p>
+        </div>
       </section>
-    </main>
 
-    <script src="renderer.js"></script>
-  </body>
+      <section class="card">
+        <h2>📝 交易记录</h2>
+        <button id="refreshWalletBtn" class="btn btn-secondary">刷新记录</button>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>类型</th>
+                <th>金额</th>
+                <th>Gas</th>
+                <th>合约方法</th>
+              </tr>
+            </thead>
+            <tbody id="txTbody">
+              <tr>
+                <td colspan="5" class="muted">暂无记录</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <!-- 交易记录导入面板 -->
+    <section id="panel-csv" class="panel">
+      <section class="card">
+        <h2>📄 导入交易记录</h2>
+        <p class="hint">支持 CSV / XLSX 格式（Binance/OKX/Bybit/Coinbase 等交易所导出文件）· 数据自动保存到 MySQL</p>
+        <div class="actions">
+          <button id="importFileBtn" class="btn btn-primary">📂 导入 CSV / XLSX</button>
+          <button id="aiAnalyzeBtn" class="btn btn-accent" disabled>🤖 AI 分析买卖点</button>
+          <button id="exportReportBtn" class="btn btn-secondary">📤 导出报告</button>
+        </div>
+        <div id="csvStatus"></div>
+      </section>
+
+      <section class="card">
+        <h2>📚 历史导入记录</h2>
+        <div class="form-group">
+          <select id="importHistorySelect">
+            <option value="">-- 选择历史批次 --</option>
+          </select>
+          <button id="loadHistoryBtn" class="btn btn-secondary">加载</button>
+        </div>
+        <div id="importHistoryInfo" class="muted"></div>
+      </section>
+
+      <section class="card">
+        <h2>📊 交易习惯分析</h2>
+        <div id="csvAnalysis">
+          <p class="muted">导入文件后显示分析</p>
+        </div>
+      </section>
+
+      <section class="card" id="aiAnalysisCard" style="display:none;">
+        <h2>🤖 AI 买卖点分析</h2>
+        <div id="aiAnalysisResult">
+          <p class="muted">等待分析...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>📝 交易明细</h2>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>交易对</th>
+                <th>方向</th>
+                <th>价格</th>
+                <th>数量</th>
+                <th>总额</th>
+              </tr>
+            </thead>
+            <tbody id="csvTbody">
+              <tr>
+                <td colspan="6" class="muted">暂无数据</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <!-- 设置面板 -->
+    <section id="panel-settings" class="panel">
+      <section class="card">
+        <h2>🤖 AI 配置（已固定）</h2>
+        <div class="ai-config-info">
+          <div class="config-item"><span class="config-label">Provider</span><span class="config-value">MiniMax</span>
+          </div>
+          <div class="config-item"><span class="config-label">Model</span><span
+              class="config-value">MiniMax-M2.5-highspeed</span></div>
+          <div class="config-item"><span class="config-label">API</span><span class="config-value">OpenAI
+              Completions</span></div>
+          <div class="config-item"><span class="config-label">状态</span><span class="config-value badge-allow">✅
+              已配置</span></div>
+        </div>
+      </section>
+      <section class="card">
+        <h2>⚙️ 冷静设置</h2>
+        <div class="form-group">
+          <label>冷静时间 <input type="number" id="cooldown" value="5" min="0" max="60" /> 秒</label>
+        </div>
+        <label class="checkbox"><input type="checkbox" id="enableBlock" checked /> 启用阻断</label>
+        <label class="checkbox"><input type="checkbox" id="autoStart" /> 开机自启</label>
+      </section>
+      <section class="actions">
+        <button id="saveBtn" class="btn btn-primary">保存配置</button>
+      </section>
+    </section>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+
 </html>
