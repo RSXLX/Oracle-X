@@ -1,12 +1,24 @@
 /**
- * Oracle-X 增强版 CSV 导入器
- * 支持自动格式识别 + 市场数据整合
+ * Oracle-X 增强版交易记录导入器
+ * 支持 CSV / XLSX 自动格式识别 + 市场数据整合
  */
 
 const fs = require('fs');
+const path = require('path');
+
+// 延迟加载 xlsx（可能未安装）
+let XLSX = null;
+function getXLSX() {
+  if (!XLSX) {
+    try { XLSX = require('xlsx'); } catch (e) {
+      console.warn('[CSV-Importer] xlsx package not installed, XLSX import disabled');
+    }
+  }
+  return XLSX;
+}
 
 /**
- * 增强 CSV 交易记录分析器
+ * 增强 CSV/XLSX 交易记录分析器
  */
 class EnhancedCSVImporter {
   constructor() {
@@ -127,19 +139,76 @@ class EnhancedCSVImporter {
   }
 
   /**
+   * 统一入口：自动检测文件类型并解析
+   */
+  async parseFile(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.xlsx' || ext === '.xls') {
+      return this.parseXLSX(filePath);
+    }
+    return this.parseCSV(filePath);
+  }
+
+  /**
+   * 解析 XLSX 文件
+   */
+  async parseXLSX(filePath) {
+    const xlsx = getXLSX();
+    if (!xlsx) {
+      throw new Error('未安装 xlsx 依赖，请运行 npm install xlsx');
+    }
+
+    const workbook = xlsx.readFile(filePath);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // 转为 JSON 数组（每行一个对象）
+    const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (!rows.length) {
+      throw new Error('XLSX 文件为空');
+    }
+
+    // 获取表头
+    const header = Object.keys(rows[0]);
+    const format = this.detectFormat(header);
+    console.log('[XLSX] Detected format:', format.name, '| Rows:', rows.length);
+
+    // 转为交易记录
+    const transactions = [];
+    for (const row of rows) {
+      try {
+        const values = header.map(h => String(row[h] ?? ''));
+        const tx = this.mapToTransaction(values, header, format);
+        if (tx) transactions.push(tx);
+      } catch (e) {
+        // 跳过无效行
+      }
+    }
+
+    const enrichedTxs = await this.enrichWithMarketData(transactions);
+
+    return {
+      format: format.name + ' (XLSX)',
+      count: enrichedTxs.length,
+      transactions: enrichedTxs,
+    };
+  }
+
+  /**
    * 解析 CSV
    */
   async parseCSV(filePath) {
     const content = await fs.promises.readFile(filePath, 'utf-8');
     const lines = content.trim().split(/\r?\n/);
-    
+
     if (lines.length < 2) {
       throw new Error('CSV 文件为空');
     }
 
     // 解析头部
     const header = this.parseCSVLine(lines[0]);
-    
+
     // 自动识别格式
     const format = this.detectFormat(header);
     console.log('[CSV] Detected format:', format.name);
@@ -172,13 +241,13 @@ class EnhancedCSVImporter {
    */
   detectFormat(header) {
     const h = header.map(x => x.toLowerCase());
-    
+
     // 检查每个已知格式
     for (const [key, def] of Object.entries(this.formatDefinitions)) {
-      const matchCount = def.headers.filter(hdr => 
+      const matchCount = def.headers.filter(hdr =>
         h.some(header => header.includes(hdr.toLowerCase()))
       ).length;
-      
+
       if (matchCount >= 3) {
         return { ...def, key };
       }
@@ -198,7 +267,7 @@ class EnhancedCSVImporter {
   createGenericColumnMap(header) {
     const map = {};
     const h = header.map(x => x.toLowerCase());
-    
+
     // 智能匹配
     map.time = header.filter((_, i) => h[i].match(/time|date|时间/))[0];
     map.symbol = header.filter((_, i) => h[i].match(/symbol|pair|market|币种/))[0];
@@ -207,7 +276,7 @@ class EnhancedCSVImporter {
     map.qty = header.filter((_, i) => h[i].match(/qty|amount|quantity|数量/))[0];
     map.total = header.filter((_, i) => h[i].match(/total|amount|总额/))[0];
     map.fee = header.filter((_, i) => h[i].match(/fee|commission|手续费/))[0];
-    
+
     return map;
   }
 
@@ -218,7 +287,7 @@ class EnhancedCSVImporter {
     const values = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (const char of line) {
       if (char === '"') {
         inQuotes = !inQuotes;
@@ -230,7 +299,7 @@ class EnhancedCSVImporter {
       }
     }
     values.push(current.trim());
-    
+
     return values;
   }
 
@@ -311,7 +380,7 @@ class EnhancedCSVImporter {
 
     // 提取基础币种
     const baseSymbol = symbol.replace(/USDT|BUSD|USD|ETH|BTC$/g, '');
-    
+
     return {
       name: baseSymbol,
       symbol: baseSymbol,
@@ -324,7 +393,7 @@ class EnhancedCSVImporter {
    */
   parseTimestamp(timeStr) {
     if (!timeStr) return new Date().toISOString();
-    
+
     // 尝试多种格式
     const formats = [
       /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):?(\d{2})?/,
@@ -362,7 +431,7 @@ class EnhancedCSVImporter {
     // 这里使用模拟数据
     const enriched = transactions.map(tx => {
       const info = tx.symbolInfo;
-      
+
       // 模拟市场数据
       return {
         ...tx,
@@ -464,7 +533,7 @@ class EnhancedCSVImporter {
     // 交易风格
     const days = Object.keys(stats.byMonth).length || 1;
     const avgPerDay = stats.totalTrades / Math.max(1, days * 30);
-    
+
     let style = 'investor';
     if (avgPerDay > 10) style = 'degen';
     else if (avgPerDay > 3) style = 'dayTrader';

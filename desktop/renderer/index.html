@@ -10,7 +10,7 @@
     <main class="app">
       <header>
         <h1>🔮 Oracle-X NoFOMO</h1>
-        <p>全局交易冷静层</p>
+        <p>全局交易冷静层 · AI 交易分析助手</p>
       </header>
 
       <!-- 导航 -->
@@ -58,10 +58,7 @@
             <label>选择链
               <select id="walletChain">
                 <option value="ethereum">Ethereum</option>
-                <option value="bsc">BNB Chain</option>
-                <option value="polygon">Polygon</option>
-                <option value="arbitrum">Arbitrum</option>
-                <option value="solana">Solana</option>
+                <option value="bsc">BNB Chain (BSC)</option>
               </select>
             </label>
           </div>
@@ -71,7 +68,10 @@
           <div class="form-group">
             <label>备注 <input type="text" id="walletLabel" placeholder="如：主钱包" /></label>
           </div>
-          <button id="addWalletBtn" class="btn btn-primary">添加钱包</button>
+          <div class="actions">
+            <button id="addWalletBtn" class="btn btn-primary">添加钱包</button>
+            <button id="saveWalletsBtn" class="btn btn-secondary">💾 保存数据</button>
+          </div>
         </section>
 
         <section class="card">
@@ -89,33 +89,51 @@
         </section>
 
         <section class="card">
+          <h2>🤖 AI 钱包分析</h2>
+          <div id="walletAIAnalysis">
+            <p class="muted">点击钱包的"AI分析"按钮查看 AI 深度分析</p>
+          </div>
+        </section>
+
+        <section class="card">
           <h2>📝 交易记录</h2>
           <button id="refreshWalletBtn" class="btn btn-secondary">刷新记录</button>
           <div class="tableWrap">
             <table>
-              <thead><tr><th>时间</th><th>类型</th><th>金额</th><th>Gas</th></tr></thead>
-              <tbody id="txTbody"><tr><td colspan="4" class="muted">暂无记录</td></tr></tbody>
+              <thead><tr><th>时间</th><th>类型</th><th>金额</th><th>Gas</th><th>合约方法</th></tr></thead>
+              <tbody id="txTbody"><tr><td colspan="5" class="muted">暂无记录</td></tr></tbody>
             </table>
           </div>
         </section>
       </section>
 
-      
-      <!-- CSV 导入面板 -->
+      <!-- 交易记录导入面板 -->
       <section id="panel-csv" class="panel">
         <section class="card">
           <h2>📄 导入交易记录</h2>
-          <p class="hint">支持 Binance/OKX/Bybit/Coinbase CSV 导出文件</p>
-          <button id="importCSVBtn" class="btn btn-primary">导入 CSV</button>
-          <button id="exportReportBtn" class="btn btn-secondary">导出报告</button>
+          <p class="hint">支持 CSV / XLSX 格式（Binance/OKX/Bybit/Coinbase 等交易所导出文件）</p>
+          <div class="actions">
+            <button id="importFileBtn" class="btn btn-primary">📂 导入 CSV / XLSX</button>
+            <button id="aiAnalyzeBtn" class="btn btn-accent" disabled>🤖 AI 分析买卖点</button>
+            <button id="exportReportBtn" class="btn btn-secondary">📤 导出报告</button>
+          </div>
           <div id="csvStatus"></div>
         </section>
+
         <section class="card">
           <h2>📊 交易习惯分析</h2>
           <div id="csvAnalysis">
-            <p class="muted">导入 CSV 后显示分析</p>
+            <p class="muted">导入文件后显示分析</p>
           </div>
         </section>
+
+        <section class="card" id="aiAnalysisCard" style="display:none;">
+          <h2>🤖 AI 买卖点分析</h2>
+          <div id="aiAnalysisResult">
+            <p class="muted">等待分析...</p>
+          </div>
+        </section>
+
         <section class="card">
           <h2>📝 交易明细</h2>
           <div class="tableWrap">
@@ -127,15 +145,15 @@
         </section>
       </section>
 
-<!-- 设置面板 -->
+      <!-- 设置面板 -->
       <section id="panel-settings" class="panel">
         <section class="card">
-          <h2>🤖 AI 配置</h2>
-          <div class="form-group">
-            <label>API Provider <select id="aiProvider"><option value="minimax">MiniMax</option></select></label>
-          </div>
-          <div class="form-group">
-            <label>API Key <input type="password" id="apiKey" /></label>
+          <h2>🤖 AI 配置（已固定）</h2>
+          <div class="ai-config-info">
+            <div class="config-item"><span class="config-label">Provider</span><span class="config-value">MiniMax</span></div>
+            <div class="config-item"><span class="config-label">Model</span><span class="config-value">MiniMax-M2.5-highspeed</span></div>
+            <div class="config-item"><span class="config-label">API</span><span class="config-value">OpenAI Completions</span></div>
+            <div class="config-item"><span class="config-label">状态</span><span class="config-value badge-allow">✅ 已配置</span></div>
           </div>
         </section>
         <section class="card">

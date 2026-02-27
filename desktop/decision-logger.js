@@ -1,82 +1,61 @@
 /**
- * Oracle-X Desktop - Decision Logger
- * 决策日志持久化
+ * Oracle-X Desktop - Decision Logger (MySQL)
+ * 决策日志持久化 → MySQL
  */
 
-const fs = require('fs');
-const path = require('path');
-const { app } = require('electron');
-
 class DecisionLogger {
-  constructor() {
-    this.logPath = path.join(app.getPath('userData'), 'decision-logs.json');
-    this.logs = [];
-    this.maxLogs = 1000;
-    this.load();
-  }
-
-  load() {
-    try {
-      if (fs.existsSync(this.logPath)) {
-        const data = fs.readFileSync(this.logPath, 'utf-8');
-        this.logs = JSON.parse(data);
-      }
-    } catch (err) {
-      console.error('[Logger] Load error:', err);
-      this.logs = [];
-    }
-  }
-
-  save() {
-    try {
-      fs.writeFileSync(this.logPath, JSON.stringify(this.logs, null, 2));
-    } catch (err) {
-      console.error('[Logger] Save error:', err);
-    }
+  constructor(db) {
+    this.db = db;
   }
 
   /**
    * 添加决策日志
    */
-  add(entry) {
-    const log = {
-      id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-      createdAt: new Date().toISOString(),
-      ...entry,
-    };
-    
-    this.logs.unshift(log);
-    
-    // 限制数量
-    if (this.logs.length > this.maxLogs) {
-      this.logs = this.logs.slice(0, this.maxLogs);
-    }
-    
-    this.save();
-    return log;
+  async add(entry) {
+    const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    await this.db.execute(
+      'INSERT INTO decision_logs (id, created_at, type, app_name, action, detail) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        id,
+        now,
+        entry.type || '',
+        entry.appName || '',
+        entry.action || '',
+        typeof entry.detail === 'object' ? JSON.stringify(entry.detail) : (entry.detail || ''),
+      ]
+    );
+
+    return { id, createdAt: now, ...entry };
   }
 
   /**
    * 获取日志
    */
-  get(limit = 50) {
-    return this.logs.slice(0, limit);
+  async get(limit = 50) {
+    const [rows] = await this.db.execute(
+      'SELECT * FROM decision_logs ORDER BY created_at DESC LIMIT ?',
+      [limit]
+    );
+    return rows;
   }
 
   /**
    * 获取今日日志
    */
-  getToday() {
-    const today = new Date().toDateString();
-    return this.logs.filter(l => new Date(l.createdAt).toDateString() === today);
+  async getToday() {
+    const [rows] = await this.db.execute(
+      'SELECT * FROM decision_logs WHERE DATE(created_at) = CURDATE() ORDER BY created_at DESC'
+    );
+    return rows;
   }
 
   /**
    * 清除日志
    */
-  clear() {
-    this.logs = [];
-    this.save();
+  async clear() {
+    await this.db.execute('DELETE FROM decision_logs');
   }
 }
 

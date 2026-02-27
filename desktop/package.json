@@ -35,6 +35,8 @@
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
-    "uiohook-napi": "^1.5.4"
+    "mysql2": "^3.18.2",
+    "uiohook-napi": "^1.5.4",
+    "xlsx": "^0.18.5"
   }
 }

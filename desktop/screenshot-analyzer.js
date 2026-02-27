@@ -14,7 +14,7 @@ class ScreenshotAnalyzer {
     this.apiKey = options.apiKey || 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq';
     this.apiBaseUrl = options.apiBaseUrl || 'https://mydmx.huoyuanqudao.cn/v1';
     this.model = options.model || 'MiniMax-M2.5-highspeed';
-    
+
     this.buttonKeywords = [
       '买入', '卖出', '开多', '开空', '平多', '平空', '做多', '做空',
       'BUY', 'SELL', 'LONG', 'SHORT', 'BUY NOW', 'SELL NOW',
@@ -34,10 +34,10 @@ class ScreenshotAnalyzer {
     }
 
     const imageBase64 = fs.readFileSync(screenshotPath, { encoding: 'base64' });
-    
+
     // 使用 MiniMax 视觉 API
     const result = await this.callMiniMax(imageBase64);
-    
+
     return this.parseResult(result);
   }
 
@@ -46,7 +46,7 @@ class ScreenshotAnalyzer {
    */
   async callMiniMax(imageBase64) {
     const endpoint = `${this.apiBaseUrl}/chat/completions`;
-    
+
     const messages = [
       {
         role: 'user',
@@ -87,26 +87,27 @@ class ScreenshotAnalyzer {
   }
 
   /**
-   * 降级结果
+   * 降级结果（返回对象）
    */
   fallbackResult() {
-    return JSON.stringify({
+    return {
       hasTradingButtons: false,
       buttons: [],
       platform: 'unknown',
       riskLevel: 'low',
       action: 'allow'
-    });
+    };
   }
 
   parseResult(content) {
     try {
+      if (typeof content === 'object') return content;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
     } catch (e) {
-      console.warn('[Analyzer] Parse error:', e);
+      console.warn('[Analyzer] Parse error, using fallback');
     }
     return this.fallbackResult();
   }
