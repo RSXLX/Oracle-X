@@ -24,19 +24,20 @@ class GlobalAppMonitor {
     this.mode = options.mode || MONITOR_MODES.ACCESSIBILITY;
     this.targetApps = options.targetApps || Object.keys(TARGET_APPS);
     this.callbacks = {
-      onButtonDetected: options.onButtonDetected || (() => {}),
-      onAppActivated: options.onAppActivated || (() => {}),
-      onScreenshot: options.onScreenshot || (() => {}),
+      onButtonDetected: options.onButtonDetected || (() => { }),
+      onAppActivated: options.onAppActivated || (() => { }),
+      onScreenshot: options.onScreenshot || (() => { }),
     };
     this.isRunning = false;
     this.screenshotInterval = null;
+    this.buttonInterval = null;
     this.lastCheck = 0;
   }
 
   async start() {
     if (this.isRunning) return;
     console.log('[Monitor] Starting in mode:', this.mode);
-    
+
     switch (this.mode) {
       case MONITOR_MODES.ACCESSIBILITY:
         await this.startButtonMonitor();
@@ -47,7 +48,7 @@ class GlobalAppMonitor {
       default:
         await this.startAccessibilityMonitor();
     }
-    
+
     this.isRunning = true;
   }
 
@@ -56,6 +57,10 @@ class GlobalAppMonitor {
     if (this.screenshotInterval) {
       clearInterval(this.screenshotInterval);
       this.screenshotInterval = null;
+    }
+    if (this.buttonInterval) {
+      clearInterval(this.buttonInterval);
+      this.buttonInterval = null;
     }
     console.log('[Monitor] Stopped');
   }
@@ -66,29 +71,29 @@ class GlobalAppMonitor {
   async startButtonMonitor() {
     const checkForTradeButton = () => {
       if (!this.isRunning) return;
-      
+
       // 获取前台 App 名称
-      exec("osascript -e 'tell app \"System Events\" to get name of first process whose frontmost is true'", 
+      exec("osascript -e 'tell app \"System Events\" to get name of first process whose frontmost is true'",
         (err, stdout) => {
           if (err || !stdout) return;
-          
+
           const appName = stdout.trim().toLowerCase();
-          
+
           // 检查是否是目标 App
           const isTargetApp = this.targetApps.some(t => appName.includes(t.toLowerCase()));
           if (!isTargetApp) return;
-          
+
           // 获取窗口中的文本内容
           exec(`osascript -e 'tell app "System Events" to get value of every UI element of front window of process "${stdout.trim()}"'`,
             (err2, stdout2) => {
               if (err2 || !stdout2) return;
-              
+
               const text = stdout2.toLowerCase();
-              
+
               // 检测交易按钮关键词
               const keywords = ['买入', 'buy', 'sell', '卖出', 'long', 'short', '开多', '开空', '确认下单', 'place order', 'confirm order', '提交订单'];
               const hasButton = keywords.some(k => text.includes(k.toLowerCase()));
-              
+
               // 防抖：5秒内不重复触发
               const now = Date.now();
               if (hasButton && now - this.lastCheck > 5000) {
@@ -103,7 +108,7 @@ class GlobalAppMonitor {
     };
 
     // 每1.5秒检查一次
-    setInterval(checkForTradeButton, 1500);
+    this.buttonInterval = setInterval(checkForTradeButton, 1500);
     checkForTradeButton();
     console.log('[Monitor] Button click monitoring started');
   }

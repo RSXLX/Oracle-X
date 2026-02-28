@@ -3,11 +3,25 @@
  * 使用 AI 解析买卖点，定位时间，做出分析
  */
 
-const AI_CONFIG = {
-    baseUrl: 'https://mydmx.huoyuanqudao.cn/v1',
-    apiKey: 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq',
-    model: 'MiniMax-M2.5-highspeed',
-};
+const AI_CONFIG = (() => {
+    const envPath = require('path').join(__dirname, '.env.local');
+    const cfg = { baseUrl: 'https://mydmx.huoyuanqudao.cn/v1', apiKey: '', model: 'MiniMax-M2.5-highspeed' };
+    try {
+        const content = require('fs').readFileSync(envPath, 'utf-8');
+        for (const line of content.split('\n')) {
+            const t = line.trim();
+            if (!t || t.startsWith('#')) continue;
+            const eq = t.indexOf('=');
+            if (eq > 0) {
+                const k = t.slice(0, eq).trim(), v = t.slice(eq + 1).trim();
+                if (k === 'AI_BASE_URL') cfg.baseUrl = v;
+                if (k === 'AI_API_KEY') cfg.apiKey = v;
+                if (k === 'AI_MODEL') cfg.model = v;
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return cfg;
+})();
 
 class AITradeAnalyzer {
     constructor(config = {}) {
@@ -149,9 +163,9 @@ ${txSummary}
     }
 
     /**
-     * 构建交易摘要文本
+     * 构建交易摘要文本（支持附加 PnL 统计）
      */
-    buildTradeSummary(transactions) {
+    buildTradeSummary(transactions, pnlStats = null) {
         // 按时间排序
         const sorted = [...transactions].sort((a, b) =>
             new Date(a.timestamp) - new Date(b.timestamp)
@@ -166,6 +180,18 @@ ${txSummary}
         summary += `买入: ${buys.length} 笔 | 卖出: ${sells.length} 笔\n`;
         summary += `涉及币种: ${[...symbols].join(', ')}\n`;
         summary += `时间范围: ${sorted[0]?.timestamp || '?'} ~ ${sorted[sorted.length - 1]?.timestamp || '?'}\n\n`;
+
+        // 附加 PnL 统计（如果有）
+        if (pnlStats?.hasPairs) {
+            summary += `## 已计算的统计指标\n`;
+            summary += `已实现盈亏: ${pnlStats.totalPnl.toFixed(2)} | 净盈亏: ${pnlStats.netPnl.toFixed(2)} | 盈亏率: ${pnlStats.pnlPct.toFixed(2)}%\n`;
+            summary += `胜率: ${pnlStats.winRate.toFixed(1)}% | 盈利${pnlStats.wins}笔/亏损${pnlStats.losses}笔\n`;
+            summary += `盈亏比: ${pnlStats.profitFactor === Infinity ? '∞' : pnlStats.profitFactor.toFixed(2)} | 平均盈利: ${pnlStats.avgWin.toFixed(2)} | 平均亏损: ${pnlStats.avgLoss.toFixed(2)}\n`;
+            summary += `平均持仓: ${pnlStats.holdPeriod.avgHours.toFixed(1)}小时 | 日内占比: ${Math.round(pnlStats.holdPeriod.buckets.intraday / pnlStats.pairsCount * 100)}%\n`;
+            summary += `最大连胜: ${pnlStats.streaks.maxWinStreak} | 最大连败: ${pnlStats.streaks.maxLossStreak}\n`;
+            summary += `单笔最大占比: ${pnlStats.positionSizing.maxTradeRatio.toFixed(1)}% | 单标的最大占比: ${pnlStats.positionSizing.maxSymbolRatio.toFixed(1)}%\n`;
+            summary += `手续费占比: ${pnlStats.costEfficiency.feeToVolumeRatio.toFixed(3)}%\n\n`;
+        }
 
         // 取前 30 笔详细记录
         summary += '详细记录（最多30笔）：\n';

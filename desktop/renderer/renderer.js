@@ -24,6 +24,7 @@ async function loadSettings() {
       document.getElementById('cooldown').value = settings.cooldown || 5;
       document.getElementById('enableBlock').checked = settings.enableBlock ?? true;
       document.getElementById('autoStart').checked = settings.autoStart ?? false;
+
     }
   } catch (err) {
     console.error('Load settings error:', err);
@@ -36,6 +37,7 @@ async function saveSettings() {
       cooldown: parseInt(document.getElementById('cooldown').value) || 5,
       enableBlock: document.getElementById('enableBlock').checked,
       autoStart: document.getElementById('autoStart').checked,
+
     });
     showStatus('saveBtn', '已保存', 'success');
   } catch (err) {
@@ -289,48 +291,116 @@ async function importFile() {
 
 function renderCSVAnalysis(a) {
   const stats = a.stats || {};
+  const pnl = a.pnl;
   const el = document.getElementById('csvAnalysis');
 
-  el.innerHTML = `
+  // 基础统计卡片
+  let html = `
     <div class="stats-grid">
       <div class="stat"><span class="stat-label">交易次数</span><span class="stat-value">${stats.totalTrades || 0}</span></div>
       <div class="stat"><span class="stat-label">交易风格</span><span class="stat-value">${a.style || '?'}</span></div>
       <div class="stat"><span class="stat-label">风险等级</span><span class="stat-value">${a.riskLevel || 'low'}</span></div>
-      <div class="stat"><span class="stat-label">交易币种</span><span class="stat-value">${stats.uniqueSymbols || 0}</span></div>
+      <div class="stat"><span class="stat-label">交易标的</span><span class="stat-value">${stats.uniqueSymbols || 0}</span></div>
       <div class="stat"><span class="stat-label">总交易额</span><span class="stat-value">${(stats.totalVolume || 0).toFixed(0)}</span></div>
       <div class="stat"><span class="stat-label">总手续费</span><span class="stat-value">${(stats.totalFees || 0).toFixed(2)}</span></div>
     </div>
-    ${a.topSymbols?.length ? `
+  `;
+
+  // 盈亏分析卡片
+  if (pnl?.hasPairs) {
+    const pnlColor = pnl.netPnl >= 0 ? '#3fb950' : '#f85149';
+    const pnlSign = pnl.netPnl >= 0 ? '+' : '';
+    html += `
+      <h3 style="margin-top:16px;">📊 盈亏分析</h3>
+      <div class="stats-grid">
+        <div class="stat"><span class="stat-label">已实现盈亏</span><span class="stat-value" style="color:${pnlColor}">${pnlSign}${pnl.totalPnl.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">净盈亏(扣费)</span><span class="stat-value" style="color:${pnlColor}">${pnlSign}${pnl.netPnl.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">盈亏率</span><span class="stat-value" style="color:${pnlColor}">${pnl.pnlPct.toFixed(2)}%</span></div>
+        <div class="stat"><span class="stat-label">配对数</span><span class="stat-value">${pnl.pairsCount}</span></div>
+      </div>
+
+      <h3 style="margin-top:12px;">🎯 胜率与赔率</h3>
+      <div class="stats-grid">
+        <div class="stat"><span class="stat-label">胜率</span><span class="stat-value">${pnl.winRate.toFixed(1)}%</span></div>
+        <div class="stat"><span class="stat-label">盈利/亏损</span><span class="stat-value">${pnl.wins}/${pnl.losses}</span></div>
+        <div class="stat"><span class="stat-label">平均盈利</span><span class="stat-value" style="color:#3fb950">${pnl.avgWin.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">平均亏损</span><span class="stat-value" style="color:#f85149">${pnl.avgLoss.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">盈亏比</span><span class="stat-value">${pnl.profitFactor === Infinity ? '∞' : pnl.profitFactor.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">连胜/连败</span><span class="stat-value">${pnl.streaks.maxWinStreak}/${pnl.streaks.maxLossStreak}</span></div>
+      </div>
+
+      <h3 style="margin-top:12px;">⏱️ 持仓周期</h3>
+      <div class="stats-grid">
+        <div class="stat"><span class="stat-label">平均持仓</span><span class="stat-value">${formatHoldTime(pnl.holdPeriod.avgHours)}</span></div>
+        <div class="stat"><span class="stat-label">中位持仓</span><span class="stat-value">${formatHoldTime(pnl.holdPeriod.medianHours)}</span></div>
+        <div class="stat"><span class="stat-label">日内</span><span class="stat-value">${pnl.holdPeriod.buckets.intraday}</span></div>
+        <div class="stat"><span class="stat-label">1-3天</span><span class="stat-value">${pnl.holdPeriod.buckets.short}</span></div>
+        <div class="stat"><span class="stat-label">3天-1月</span><span class="stat-value">${pnl.holdPeriod.buckets.medium}</span></div>
+        <div class="stat"><span class="stat-label">超过1月</span><span class="stat-value">${pnl.holdPeriod.buckets.long}</span></div>
+      </div>
+
+      <h3 style="margin-top:12px;">📦 仓位管理</h3>
+      <div class="stats-grid">
+        <div class="stat"><span class="stat-label">单笔最大占比</span><span class="stat-value">${pnl.positionSizing.maxTradeRatio.toFixed(1)}%</span></div>
+        <div class="stat"><span class="stat-label">单标的最大占比</span><span class="stat-value">${pnl.positionSizing.maxSymbolRatio.toFixed(1)}%</span></div>
+        <div class="stat"><span class="stat-label">平均交易量</span><span class="stat-value">${pnl.positionSizing.avgTradeSize.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">手续费占比</span><span class="stat-value">${pnl.costEfficiency.feeToVolumeRatio.toFixed(3)}%</span></div>
+      </div>
+    `;
+  } else if (pnl && !pnl.hasPairs) {
+    html += `<div class="insight-info" style="margin-top:12px;">盈亏分析：${pnl.message}</div>`;
+  }
+
+  // Top 交易品种
+  if (a.topSymbols?.length) {
+    html += `
       <h3 style="margin-top:12px;">Top 交易品种</h3>
       <div style="display:flex;flex-wrap:wrap;gap:4px;">
         ${a.topSymbols.slice(0, 5).map(s => `<span class="ai-pattern">${s.symbol} (${s.trades}笔)</span>`).join('')}
       </div>
-    ` : ''}
-    ${a.insights?.length ? `
+    `;
+  }
+
+  // 洞察
+  if (a.insights?.length) {
+    html += `
       <div class="insights" style="margin-top:12px;">
         ${a.insights.map(i => `<div class="insight-${i.type}">${i.text}</div>`).join('')}
       </div>
-    ` : ''}
-  `;
+    `;
+  }
 
+  el.innerHTML = html;
   window.currentAnalysis = a;
+}
+
+// 格式化持仓时间显示
+function formatHoldTime(hours) {
+  if (hours < 1) return `${Math.round(hours * 60)}分`;
+  if (hours < 24) return `${hours.toFixed(1)}小时`;
+  if (hours < 24 * 30) return `${(hours / 24).toFixed(1)}天`;
+  return `${(hours / 24 / 30).toFixed(1)}月`;
 }
 
 function renderCSVTransactions(txs) {
   const tbody = document.getElementById('csvTbody');
   if (!txs?.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="muted">暂无数据</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="muted">暂无数据</td></tr>';
     return;
   }
+
+  const marketLabels = { crypto: '加密', a_share: 'A股', us_stock: '美股', hk_stock: '港股', forex: '外汇', futures: '期货', other: '其他' };
 
   tbody.innerHTML = txs.slice(0, 50).map(tx => `
     <tr>
       <td>${tx.timestamp ? new Date(tx.timestamp).toLocaleString() : tx.rawTime || '-'}</td>
-      <td>${tx.symbol || '-'}</td>
-      <td><span class="badge badge-${tx.isBuy ? 'allow' : 'block'}">${tx.isBuy ? '买入' : '卖出'}</span></td>
+      <td>${tx.symbol || tx.ticker || '-'}${tx.assetName ? ` <small>${tx.assetName}</small>` : ''}</td>
+      <td><span class="badge">${marketLabels[tx.marketType || tx.market_type] || '-'}</span></td>
+      <td><span class="badge badge-${tx.isBuy || tx.is_buy ? 'allow' : 'block'}">${tx.isBuy || tx.is_buy ? '买入' : '卖出'}</span></td>
       <td>${tx.price?.toFixed(2) || '-'}</td>
       <td>${tx.qty?.toFixed(4) || '-'}</td>
       <td>${tx.total?.toFixed(2) || '-'}</td>
+      <td>${tx.currency || '-'}</td>
     </tr>
   `).join('');
 }
@@ -448,25 +518,101 @@ async function exportReport() {
 
 function generateReport(analysis) {
   const stats = analysis.stats || {};
-  return `# Oracle-X 交易分析报告
+  const pnl = analysis.pnl;
+  const marketLabels = { crypto: '加密货币', a_share: 'A股', us_stock: '美股', hk_stock: '港股', forex: '外汇', futures: '期货', other: '其他' };
+
+  let report = `# Oracle-X 交易分析报告
 
 生成: ${new Date().toLocaleString()}
 
 风格: ${analysis.style} | 风险: ${analysis.riskLevel}
 
-交易: ${stats.totalTrades}笔 | 金额: ${stats.totalVolume?.toFixed(2)}USDT | 币种: ${stats.uniqueSymbols}
-
-${analysis.topSymbols?.length ? '## Top 交易品种\n' + analysis.topSymbols.map(s => `- ${s.symbol}: ${s.trades}笔, ${s.volume?.toFixed(2)} USDT`).join('\n') : ''}
-
-${analysis.insights?.length ? '## 洞察\n' + analysis.insights.map(i => `- [${i.type}] ${i.text}`).join('\n') : ''}
+交易: ${stats.totalTrades}笔 | 金额: ${stats.totalVolume?.toFixed(2)} | 标的: ${stats.uniqueSymbols}
 `;
+
+  // 盈亏分析
+  if (pnl?.hasPairs) {
+    const sign = pnl.netPnl >= 0 ? '+' : '';
+    report += `
+## 盈亏分析
+
+- 已实现盈亏: ${sign}${pnl.totalPnl.toFixed(2)}
+- 净盈亏(扣费): ${sign}${pnl.netPnl.toFixed(2)}
+- 盈亏率: ${pnl.pnlPct.toFixed(2)}%
+- 配对数: ${pnl.pairsCount}
+
+## 胜率与赔率
+
+- 胜率: ${pnl.winRate.toFixed(1)}%
+- 盈利/亏损笔数: ${pnl.wins}/${pnl.losses}
+- 平均盈利: ${pnl.avgWin.toFixed(2)}
+- 平均亏损: ${pnl.avgLoss.toFixed(2)}
+- 盈亏比: ${pnl.profitFactor === Infinity ? '∞' : pnl.profitFactor.toFixed(2)}
+- 最大连胜: ${pnl.streaks.maxWinStreak}
+- 最大连败: ${pnl.streaks.maxLossStreak}
+
+## 持仓周期
+
+- 平均持仓: ${formatHoldTime(pnl.holdPeriod.avgHours)}
+- 日内: ${pnl.holdPeriod.buckets.intraday} | 1-3天: ${pnl.holdPeriod.buckets.short} | 3天-1月: ${pnl.holdPeriod.buckets.medium} | 超1月: ${pnl.holdPeriod.buckets.long}
+
+## 仓位管理
+
+- 单笔最大占比: ${pnl.positionSizing.maxTradeRatio.toFixed(1)}%
+- 单标的最大占比: ${pnl.positionSizing.maxSymbolRatio.toFixed(1)}%
+- 手续费占交易额: ${pnl.costEfficiency.feeToVolumeRatio.toFixed(3)}%
+`;
+  }
+
+  // 市场分布
+  if (analysis.marketTypeBreakdown && Object.keys(analysis.marketTypeBreakdown).length > 0) {
+    report += '\n## 市场分布\n';
+    for (const [mt, count] of Object.entries(analysis.marketTypeBreakdown)) {
+      report += `- ${marketLabels[mt] || mt}: ${count}笔\n`;
+    }
+  }
+
+  if (analysis.topSymbols?.length) {
+    report += '\n## Top 交易标的\n' + analysis.topSymbols.map(s =>
+      `- ${s.symbol} [${marketLabels[s.marketType] || ''}]: ${s.trades}笔, ${s.volume?.toFixed(2)}`
+    ).join('\n');
+  }
+
+  if (analysis.insights?.length) {
+    report += '\n\n## 洞察\n' + analysis.insights.map(i => `- [${i.type}] ${i.text}`).join('\n');
+  }
+
+  return report;
 }
 
 document.getElementById('exportReportBtn')?.addEventListener('click', exportReport);
 
-// ==================== 决策日志（占位）====================
+// ==================== 决策日志 ====================
 async function refreshLogs() {
-  // 占位 - 决策日志功能
+  try {
+    const { items } = await window.oracleDesktop.listDecisionLogs(20);
+    const el = document.getElementById('decisionLogs');
+    if (!el) return;
+
+    if (!items?.length) {
+      el.innerHTML = '<p class="muted">暂无阻断记录</p>';
+      return;
+    }
+
+    const actionLabels = { block: '阻断', warn: '警告', allow: '放行' };
+    el.innerHTML = items.map(log => {
+      const time = log.created_at ? new Date(log.created_at).toLocaleString() : '-';
+      const badge = log.action === 'block' ? 'block' : log.action === 'warn' ? 'warn' : 'allow';
+      return `<div class="log-item">
+        <span class="badge badge-${badge}">${actionLabels[log.action] || log.action || '-'}</span>
+        <span>${log.app_name || '-'}</span>
+        <span class="muted">${time}</span>
+        ${log.detail ? `<small class="muted">${typeof log.detail === 'string' ? log.detail.slice(0, 80) : ''}</small>` : ''}
+      </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('Load logs error:', err);
+  }
 }
 
 // ==================== 历史导入 ====================

@@ -3,8 +3,55 @@
  * 包含所有功能模块，数据存储使用 MySQL
  */
 
-const { app, BrowserWindow, ipcMain, screen, globalShortcut, dialog, Menu, Tray } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, globalShortcut, dialog, Menu, Tray, net } = require('electron');
 const path = require('path');
+const fs = require('fs');
+
+// ===== 网络代理配置 =====
+const envPath = path.join(__dirname, '.env.local');
+const proxyConfig = {};
+try {
+  const proxyContent = fs.readFileSync(envPath, 'utf-8');
+  for (const line of proxyContent.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    if (trimmed.startsWith('HTTPS_PROXY=') || trimmed.startsWith('HTTP_PROXY=')) {
+      const eqIdx = trimmed.indexOf('=');
+      proxyConfig.url = trimmed.slice(eqIdx + 1).trim();
+    }
+  }
+} catch (e) { }
+
+// 设置 Node.js 全局代理
+if (proxyConfig.url) {
+  process.env.HTTPS_PROXY = proxyConfig.url;
+  process.env.HTTP_PROXY = proxyConfig.url;
+  process.env.https_proxy = proxyConfig.url;
+  process.env.http_proxy = proxyConfig.url;
+  console.log('[Proxy] Global proxy configured:', proxyConfig.url);
+}
+
+// 读取 .env.local 配置
+function loadEnvConfig() {
+  const envPath = path.join(__dirname, '.env.local');
+  const config = {};
+  try {
+    const content = fs.readFileSync(envPath, 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) {
+        config[trimmed.slice(0, eqIdx).trim()] = trimmed.slice(eqIdx + 1).trim();
+      }
+    }
+  } catch (e) {
+    console.warn('[Main] .env.local not found');
+  }
+  return config;
+}
+
+const envConfig = loadEnvConfig();
 
 // 模块导入
 const Database = require('./database');
@@ -20,6 +67,7 @@ const { RiskEngine } = require('./risk-engine');
 const { DataExporter } = require('./data-exporter');
 const { HotkeyManager } = require('./hotkey-manager');
 const { AITradeAnalyzer } = require('./ai-trade-analyzer');
+const { InterceptionEngine } = require('./interception-engine');
 const { SettingsStorage } = require('./settings-storage');
 const { StatsTracker } = require('./stats-tracker');
 const { DecisionLogger } = require('./decision-logger');
@@ -42,14 +90,15 @@ let aiTradeAnalyzer = null;
 let settingsStorage = null;
 let statsTracker = null;
 let decisionLogger = null;
+let interceptionEngine = null;
 let db = null;
 
-// 默认设置（AI 配置硬编码）
+// 默认设置（从 .env.local 读取 AI 配置）
 let settings = {
   aiProvider: 'minimax',
-  apiKey: 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq',
-  apiBaseUrl: 'https://mydmx.huoyuanqudao.cn/v1',
-  aiModel: 'MiniMax-M2.5-highspeed',
+  apiKey: envConfig.AI_API_KEY || '',
+  apiBaseUrl: envConfig.AI_BASE_URL || 'https://mydmx.huoyuanqudao.cn/v1',
+  aiModel: envConfig.AI_MODEL || 'MiniMax-M2.5-highspeed',
   monitorMode: MONITOR_MODES.SCREENSHOT,
   targetApps: ['Binance', 'OKX', 'Bybit', 'Coinbase'],
   cooldown: 5,
@@ -57,7 +106,19 @@ let settings = {
   minimizeToTray: true,
   autoStart: false,
   notifications: true,
+  etherscanApiKey: '',
+  bscscanApiKey: '',
 };
+
+// ==================== 全局异常处理 ====================
+process.on('uncaughtException', (err) => {
+  console.error('[Fatal] Uncaught exception:', err.message);
+  console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Fatal] Unhandled rejection:', reason);
+});
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -110,6 +171,7 @@ async function initAll() {
     settings = { ...settings, ...savedSettings };
   }
 
+
   // ===== 统计追踪 =====
   statsTracker = new StatsTracker(db);
 
@@ -128,7 +190,7 @@ async function initAll() {
   autoStartManager = new AutoStartManager();
   if (settings.autoStart) autoStartManager.enable();
 
-  // 钱包分析（传入 db）
+  // 钱包分析（传入 db，使用 Blockscout API，无需 Key）
   walletAnalyzer = new WalletAnalyzer(db);
 
   // CSV/XLSX 导入
@@ -154,6 +216,14 @@ async function initAll() {
     model: settings.aiModel,
   });
 
+  // 拦截决策引擎
+  interceptionEngine = new InterceptionEngine({
+    db,
+    marketData,
+    riskEngine,
+    decisionLogger,
+  });
+
   // 监控器
   monitor = new GlobalAppMonitor({
     mode: settings.monitorMode,
@@ -174,7 +244,18 @@ async function initAll() {
               if (mainWindow) mainWindow.webContents.send('screenshot-result', result);
 
               if (result.action === 'block' && settings.enableBlock) {
-                await showFomoWarning(appName, result);
+                // 综合评估：交易习惯 + 市场分析
+                if (interceptionEngine) {
+                  try {
+                    const report = await interceptionEngine.evaluate(result, appName);
+                    await showSmartWarning(appName, report);
+                  } catch (evalErr) {
+                    console.error('[InterceptionEngine] Eval error, fallback:', evalErr.message);
+                    await showFomoWarning(appName, result);
+                  }
+                } else {
+                  await showFomoWarning(appName, result);
+                }
               }
             }
           });
@@ -192,7 +273,18 @@ async function initAll() {
           const result = await screenshotAnalyzer.analyze(screenshotPath);
           if (mainWindow) mainWindow.webContents.send('screenshot-analyzed', result);
           if (result.action === 'block' && settings.enableBlock) {
-            await showFomoWarning(result.platform || 'Trading App', result);
+            // 综合评估
+            if (interceptionEngine) {
+              try {
+                const report = await interceptionEngine.evaluate(result, result.platform || 'Trading App');
+                await showSmartWarning(result.platform || 'Trading App', report);
+              } catch (evalErr) {
+                console.error('[InterceptionEngine] Eval error, fallback:', evalErr.message);
+                await showFomoWarning(result.platform || 'Trading App', result);
+              }
+            } else {
+              await showFomoWarning(result.platform || 'Trading App', result);
+            }
           }
         } catch (err) {
           console.error('[Analyzer] Error:', err.message);
@@ -240,6 +332,84 @@ async function showFomoWarning(appName, analysis = null) {
   return result.response === 1;
 }
 
+/**
+ * 智能风控弹窗（整合交易习惯 + 市场分析）
+ */
+async function showSmartWarning(appName, report) {
+  const lines = [`平台: ${report.screenshot?.platform || appName}`];
+
+  if (report.symbol) {
+    lines.push(`品种: ${report.symbol}`);
+  }
+
+  // 实时市场行情
+  if (report.marketInfo) {
+    const m = report.marketInfo;
+    const changeSign = m.change24h >= 0 ? '+' : '';
+    lines.push(`当前价: ${m.price} ${m.currency || ''} (${changeSign}${m.change24h}%)`);
+    lines.push(`24h 高/低: ${m.high24h} / ${m.low24h}`);
+  }
+
+  // 用户交易历史
+  if (report.tradeHistory?.count > 0) {
+    const h = report.tradeHistory;
+    lines.push('');
+    lines.push('📊 你的交易历史:');
+    lines.push(`  交易 ${h.count} 次 | 买 ${h.buys} 卖 ${h.sells}`);
+    if (h.lastTradeTime) lines.push(`  上次交易: ${h.lastTradeTime}`);
+    if (h.pnlSummary) lines.push(`  累计盈亏: ${h.pnlSummary}`);
+    if (h.recentFrequency) lines.push(`  近期频率: ${h.recentFrequency}`);
+  }
+
+  // 风险评估
+  if (report.risk) {
+    lines.push('');
+    lines.push(`⚠️ 风险等级: ${report.risk.riskLabel} (${report.risk.score}/100)`);
+    const recs = (report.risk.recommendations || []).slice(0, 3);
+    for (const rec of recs) {
+      lines.push(`  • ${rec.title}`);
+    }
+  }
+
+  lines.push(`\n冷静期: ${settings.cooldown} 秒`);
+
+  // 发送到前端展示
+  if (mainWindow) {
+    mainWindow.webContents.send('smart-warning', report);
+  }
+
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    title: '⚠️ Oracle-X 智能风控',
+    message: '检测到交易操作 — AI 综合分析',
+    detail: lines.join('\n'),
+    buttons: ['取消交易', '我已了解风险，继续'],
+    defaultId: 0,
+  });
+
+  // 记录决策日志
+  if (decisionLogger) {
+    try {
+      await decisionLogger.log({
+        type: 'interception',
+        appName,
+        action: result.response === 1 ? 'proceed' : 'cancelled',
+        detail: JSON.stringify({
+          symbol: report.symbol,
+          riskScore: report.risk?.score,
+          riskLevel: report.risk?.riskLevel,
+          hasTradeHistory: !!(report.tradeHistory?.count),
+          hasMarketInfo: !!report.marketInfo,
+        }),
+      });
+    } catch (logErr) {
+      console.error('[DecisionLogger] Error:', logErr.message);
+    }
+  }
+
+  return result.response === 1;
+}
+
 function setupIPC() {
   // ==================== 设置 ====================
   ipcMain.handle('getSettings', () => settings);
@@ -248,6 +418,7 @@ function setupIPC() {
     if (settingsStorage) await settingsStorage.save(settings);
     if (monitor) { monitor.targetApps = settings.targetApps; monitor.mode = settings.monitorMode; }
     if (screenshotAnalyzer) screenshotAnalyzer.configure({ visionProvider: settings.aiProvider, apiKey: settings.apiKey, apiBaseUrl: settings.apiBaseUrl, model: settings.aiModel });
+
     if (autoStartManager && settings.autoStart) autoStartManager.toggle(settings.autoStart);
     if (notificationManager) notificationManager.setEnabled(settings.notifications);
     return true;
@@ -342,12 +513,15 @@ function setupIPC() {
 
           await db.execute(
             `INSERT INTO transactions
-             (source, import_batch, timestamp, symbol, side, price, qty, total, fee, exchange, is_buy, raw_data)
-             VALUES ('import', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (source, import_batch, timestamp, symbol, ticker, market_type, currency, side, price, qty, total, fee, exchange, is_buy, raw_data)
+             VALUES ('import', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               batchId,
               ts,
               tx.symbol || '',
+              tx.ticker || '',
+              tx.marketType || 'crypto',
+              tx.currency || '',
               tx.side || '',
               tx.price || 0,
               tx.qty || 0,
@@ -355,7 +529,7 @@ function setupIPC() {
               tx.fee || 0,
               tx.exchange || '',
               tx.isBuy ? 1 : 0,
-              JSON.stringify({ rawTime: tx.rawTime, symbolInfo: tx.symbolInfo, marketData: tx.marketData }),
+              JSON.stringify({ rawTime: tx.rawTime, assetName: tx.assetName, symbolInfo: tx.symbolInfo, marketData: tx.marketData }),
             ]
           );
         }
@@ -372,8 +546,8 @@ function setupIPC() {
   ipcMain.handle('getImportHistory', async () => {
     if (!db) return [];
     const [rows] = await db.execute(
-      `SELECT import_batch, COUNT(*) as count, MIN(timestamp) as first_time, MAX(timestamp) as last_time, MAX(created_at) as imported_at, exchange
-       FROM transactions WHERE source = 'import' GROUP BY import_batch, exchange ORDER BY imported_at DESC`
+      `SELECT import_batch, COUNT(*) as count, MIN(timestamp) as first_time, MAX(timestamp) as last_time, MAX(created_at) as imported_at, exchange, market_type
+       FROM transactions WHERE source = 'import' GROUP BY import_batch, exchange, market_type ORDER BY imported_at DESC`
     );
     return rows;
   });
@@ -412,6 +586,24 @@ function setupIPC() {
     });
   });
 
+  // ==================== 实时分析（截图触发）====================
+  ipcMain.handle('analyzeNow', async (event, data) => {
+    if (!screenshotAnalyzer || !settings.apiKey) return { action: 'allow' };
+    try {
+      const { exec } = require('child_process');
+      const tmpFile = `/tmp/oraclex_analyze_${Date.now()}.png`;
+      return new Promise((resolve) => {
+        exec(`/usr/sbin/screencapture -x ${tmpFile}`, async (err) => {
+          if (err) return resolve({ action: 'allow' });
+          const result = await screenshotAnalyzer.analyze(tmpFile);
+          resolve(result);
+        });
+      });
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
   // ==================== 窗口控制 ====================
   ipcMain.handle('minimize', () => mainWindow?.minimize());
   ipcMain.handle('maximize', () => {
@@ -440,6 +632,35 @@ app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
   if (monitor) monitor.stop();
   if (trayManager) trayManager.destroy();
+  // 清理截图临时文件
+  cleanupScreenshotFiles();
   // 关闭数据库连接
   await Database.close();
 });
+
+/**
+ * 清理 /tmp 下的 oraclex 截图临时文件
+ */
+function cleanupScreenshotFiles() {
+  try {
+    const tmpDir = '/tmp';
+    const files = fs.readdirSync(tmpDir).filter(f => f.startsWith('oraclex_') && f.endsWith('.png'));
+    const now = Date.now();
+    let cleaned = 0;
+    for (const file of files) {
+      const filePath = path.join(tmpDir, file);
+      const stat = fs.statSync(filePath);
+      // 清理 10 分钟前的临时文件
+      if (now - stat.mtimeMs > 10 * 60 * 1000) {
+        fs.unlinkSync(filePath);
+        cleaned++;
+      }
+    }
+    if (cleaned > 0) console.log(`[Cleanup] Removed ${cleaned} temp screenshot files`);
+  } catch (e) {
+    // 忽略清理错误
+  }
+}
+
+// 每 15 分钟清理一次临时文件
+setInterval(cleanupScreenshotFiles, 15 * 60 * 1000);

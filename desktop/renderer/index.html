@@ -51,6 +51,12 @@
           </div>
         </div>
       </section>
+      <section class="card">
+        <h2>📋 决策日志</h2>
+        <div id="decisionLogs" class="decision-logs">
+          <p class="muted">暂无阻断记录</p>
+        </div>
+      </section>
     </section>
 
     <!-- 钱包面板 -->
@@ -126,7 +132,7 @@
     <section id="panel-csv" class="panel">
       <section class="card">
         <h2>📄 导入交易记录</h2>
-        <p class="hint">支持 CSV / XLSX 格式（Binance/OKX/Bybit/Coinbase 等交易所导出文件）· 数据自动保存到 MySQL</p>
+        <p class="hint">支持 CSV / XLSX 格式 · 加密货币交易所 / A股券商 / 美股券商导出文件 · AI 智能表头识别 · 数据自动保存到 MySQL</p>
         <div class="actions">
           <button id="importFileBtn" class="btn btn-primary">📂 导入 CSV / XLSX</button>
           <button id="aiAnalyzeBtn" class="btn btn-accent" disabled>🤖 AI 分析买卖点</button>
@@ -167,16 +173,18 @@
             <thead>
               <tr>
                 <th>时间</th>
-                <th>交易对</th>
+                <th>标的</th>
+                <th>市场</th>
                 <th>方向</th>
                 <th>价格</th>
                 <th>数量</th>
                 <th>总额</th>
+                <th>货币</th>
               </tr>
             </thead>
             <tbody id="csvTbody">
               <tr>
-                <td colspan="6" class="muted">暂无数据</td>
+                <td colspan="8" class="muted">暂无数据</td>
               </tr>
             </tbody>
           </table>
@@ -206,6 +214,18 @@
         </div>
         <label class="checkbox"><input type="checkbox" id="enableBlock" checked /> 启用阻断</label>
         <label class="checkbox"><input type="checkbox" id="autoStart" /> 开机自启</label>
+      </section>
+      <section class="card">
+        <h2>🔗 区块链数据源</h2>
+        <div class="ai-config-info">
+          <div class="config-item"><span class="config-label">ETH 数据源</span><span class="config-value">Blockscout V2
+              API</span></div>
+          <div class="config-item"><span class="config-label">BSC 数据源</span><span class="config-value">Blockscout V2
+              API</span></div>
+          <div class="config-item"><span class="config-label">API Key</span><span class="config-value badge-allow">✅
+              免费，无需配置</span></div>
+          <div class="config-item"><span class="config-label">备用</span><span class="config-value">RPC 扫描兜底</span></div>
+        </div>
       </section>
       <section class="actions">
         <button id="saveBtn" class="btn btn-primary">保存配置</button>

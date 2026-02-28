@@ -1,16 +1,145 @@
 /**
  * Oracle-X 钱包交易记录模块
- * 支持 ETH/BSC 通过 RPC 读取链上数据 + MySQL 持久化
+ * 数据源: Blockscout V2 API (免费, 无需 Key) + RPC 兜底
+ * 支持 ETH/BSC 链上数据 + MySQL 持久化
  */
 
-// RPC 端点配置
+const fs = require('fs');
+const path = require('path');
+
+// 读取 .env.local 中的代理配置
+function loadProxyUrl() {
+  const envPath = path.join(__dirname, '.env.local');
+  let proxyUrl = '';
+  try {
+    const content = fs.readFileSync(envPath, 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) {
+        const k = trimmed.slice(0, eqIdx).trim();
+        const v = trimmed.slice(eqIdx + 1).trim();
+        if (k === 'HTTPS_PROXY' || k === 'ALL_PROXY') proxyUrl = v;
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return proxyUrl;
+}
+
+const PROXY_URL = loadProxyUrl();
+
+// 简易代理 fetch 包装 - 使用 HTTP CONNECT 隧道
+function proxyFetch(url, opts = {}) {
+  if (!PROXY_URL) return fetch(url, opts);
+
+  return new Promise((resolve, reject) => {
+    const http = require('http');
+    const https = require('https');
+    const { URL } = require('url');
+
+    const targetUrl = new URL(url);
+    const proxyUrl = new URL(PROXY_URL);
+
+    const isHttps = targetUrl.protocol === 'https:';
+    const client = isHttps ? https : http;
+    const targetHost = targetUrl.hostname;
+    const targetPort = targetUrl.port || (isHttps ? 443 : 80);
+
+    // CONNECT 隧道方式
+    const req = http.request({
+      hostname: proxyUrl.hostname,
+      port: proxyUrl.port || 80,
+      method: 'CONNECT',
+      path: `${targetHost}:${targetPort}`,
+      timeout: 30000,
+    });
+
+    req.on('connect', (res, socket) => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`Proxy connect failed: ${res.statusCode}`));
+        return;
+      }
+
+      if (isHttps) {
+        const tls = require('tls');
+        const sslSocket = tls.connect({
+          socket: socket,
+          host: targetHost,
+          servername: targetHost,  // SNI: Cloudflare 等 CDN 需要此字段
+          rejectUnauthorized: false,
+        }, () => {
+          const options = {
+            socket: sslSocket,
+            host: targetHost,
+            port: targetPort,
+            path: targetUrl.pathname + targetUrl.search,
+            method: opts.method || 'GET',
+            headers: { ...opts.headers },
+          };
+
+          const sslReq = client.request(options, (sslRes) => {
+            let data = '';
+            sslRes.on('data', chunk => data += chunk);
+            sslRes.on('end', () => {
+              resolve({
+                ok: sslRes.statusCode < 400,
+                status: sslRes.statusCode,
+                json: async () => JSON.parse(data),
+                text: async () => data,
+              });
+            });
+          });
+
+          sslReq.on('error', reject);
+          if (opts.body) sslReq.write(opts.body);
+          sslReq.end();
+        });
+
+        sslSocket.on('error', reject);
+      } else {
+        // HTTP 直接代理
+        const options = {
+          socket: socket,
+          host: targetHost,
+          port: targetPort,
+          path: targetUrl.pathname + targetUrl.search,
+          method: opts.method || 'GET',
+        };
+
+        const proxyReq = client.request(options, (proxyRes) => {
+          let data = '';
+          proxyRes.on('data', chunk => data += chunk);
+          proxyRes.on('end', () => {
+            resolve({
+              ok: proxyRes.statusCode < 400,
+              status: proxyRes.statusCode,
+              json: async () => JSON.parse(data),
+              text: async () => data,
+            });
+          });
+        });
+
+        proxyReq.on('error', reject);
+        if (opts.body) proxyReq.write(opts.body);
+        proxyReq.end();
+      }
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => reject(new Error('Proxy timeout')));
+    req.end();
+  });
+}
+
+// RPC + Blockscout API 端点配置
 const RPC_CONFIG = {
   ethereum: {
     name: 'Ethereum',
     symbol: 'ETH',
     chainId: 1,
     rpcUrl: 'https://ethereum-mainnet.g.allthatnode.com/full/evm/0d35aeffdccb405fb831f6539c284afd',
-    explorerApi: 'https://api.etherscan.io/api',
+    blockscoutApi: 'https://eth.blockscout.com/api/v2/addresses',
     decimals: 18,
   },
   bsc: {
@@ -18,15 +147,9 @@ const RPC_CONFIG = {
     symbol: 'BNB',
     chainId: 56,
     rpcUrl: 'https://bsc-mainnet.g.allthatnode.com/full/evm/0d35aeffdccb405fb831f6539c284afd',
-    explorerApi: 'https://api.bscscan.com/api',
+    blockscoutApi: 'https://bsc.blockscout.com/api/v2/addresses',
     decimals: 18,
   },
-};
-
-// Explorer API keys（免费 tier，可选）
-const EXPLORER_KEYS = {
-  ethereum: '',
-  bsc: '',
 };
 
 class WalletAnalyzer {
@@ -34,6 +157,11 @@ class WalletAnalyzer {
     this.db = db;
     this.wallets = new Map(); // 内存缓存
   }
+
+  /**
+   * 保留接口兼容 (Blockscout 无需 API Key)
+   */
+  setExplorerKeys() { /* no-op: Blockscout is free */ }
 
   // ==================== 钱包管理 ====================
 
@@ -202,7 +330,7 @@ class WalletAnalyzer {
     if (!config) return [];
 
     try {
-      const txs = await this.fetchViaExplorerAPI(addr, chain, limit);
+      const txs = await this.fetchViaBlockscout(addr, chain, limit);
 
       const [balanceInfo, txCount] = await Promise.all([
         this.getBalance(addr, chain),
@@ -266,36 +394,68 @@ class WalletAnalyzer {
     }
   }
 
-  async fetchViaExplorerAPI(address, chain, limit) {
+  async fetchViaBlockscout(address, chain, limit) {
     const config = RPC_CONFIG[chain];
-    const apiKey = EXPLORER_KEYS[chain] || '';
-    const url = `${config.explorerApi}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=${limit}&sort=desc&apikey=${apiKey}`;
+    if (!config.blockscoutApi) {
+      console.warn(`[WalletAnalyzer] No Blockscout API for chain: ${chain}`);
+      return this.getRecentTransactionsViaRPC(address, chain);
+    }
+
+    const url = `${config.blockscoutApi}/${address}/transactions`;
+    console.log(`[WalletAnalyzer] Blockscout API: ${url}`);
 
     try {
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (data.status !== '1' || !data.result?.length) {
-        console.warn('[WalletAnalyzer] Explorer API:', data.message || data.result || 'no data');
-        console.warn('[WalletAnalyzer] Falling back to RPC scan...');
+      // 使用 Electron net.fetch（正确处理代理 + TLS）
+      // 自定义 CONNECT 隧道在 Electron BoringSSL 下有兼容性问题
+      let res;
+      try {
+        const { net } = require('electron');
+        res = await net.fetch(url);
+      } catch (electronErr) {
+        // Electron net 不可用时回退到原生 fetch
+        console.warn(`[WalletAnalyzer] Electron net.fetch failed: ${electronErr.message}, trying native fetch...`);
+        res = await fetch(url);
+      }
+      if (!res.ok) {
+        console.warn(`[WalletAnalyzer] Blockscout HTTP ${res.status}`);
         return this.getRecentTransactionsViaRPC(address, chain);
       }
 
-      return data.result.map(tx => ({
-        hash: tx.hash,
-        from: tx.from.toLowerCase(),
-        to: tx.to?.toLowerCase() || '',
-        value: parseFloat(tx.value) / Math.pow(10, config.decimals),
-        gas: parseFloat(tx.gasUsed) * parseFloat(tx.gasPrice) / 1e18,
-        timestamp: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-        blockNumber: parseInt(tx.blockNumber),
-        chain: config.name,
-        symbol: config.symbol,
-        isIncoming: tx.to?.toLowerCase() === address,
-        method: tx.functionName?.split('(')[0] || '',
-      }));
+      const data = await res.json();
+      if (!data.items?.length) {
+        console.warn('[WalletAnalyzer] Blockscout: no transactions found');
+        return [];
+      }
+
+      return data.items.slice(0, limit).map(tx => {
+        const valueWei = BigInt(tx.value || '0');
+        const gasUsed = BigInt(tx.gas_used || '0');
+        const gasPrice = BigInt(tx.gas_price || '0');
+
+        // 解析方法名: 优先 decoded_input, 其次 method 字段
+        let method = '';
+        if (tx.decoded_input?.method_call) {
+          method = tx.decoded_input.method_call.split('(')[0];
+        } else if (tx.method) {
+          method = tx.method;
+        }
+
+        return {
+          hash: tx.hash,
+          from: (tx.from?.hash || '').toLowerCase(),
+          to: (tx.to?.hash || '').toLowerCase(),
+          value: Number(valueWei) / Math.pow(10, config.decimals),
+          gas: Number(gasUsed * gasPrice) / 1e18,
+          timestamp: tx.timestamp || '',
+          blockNumber: tx.block_number || 0,
+          chain: config.name,
+          symbol: config.symbol,
+          isIncoming: (tx.to?.hash || '').toLowerCase() === address,
+          method,
+        };
+      });
     } catch (err) {
-      console.error('[WalletAnalyzer] Explorer API error:', err.message);
+      console.error('[WalletAnalyzer] Blockscout error:', err.message);
       return this.getRecentTransactionsViaRPC(address, chain);
     }
   }

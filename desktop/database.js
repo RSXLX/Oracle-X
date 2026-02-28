@@ -76,7 +76,7 @@ const TABLE_SCHEMAS = [
     last_updated DATETIME
   )`,
 
-    // 交易记录表
+    // 交易记录表（多市场支持）
     `CREATE TABLE IF NOT EXISTS transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     source ENUM('import','chain') NOT NULL DEFAULT 'import',
@@ -85,6 +85,9 @@ const TABLE_SCHEMAS = [
     hash VARCHAR(128) DEFAULT '',
     timestamp DATETIME,
     symbol VARCHAR(64) DEFAULT '',
+    ticker VARCHAR(32) DEFAULT '',
+    market_type ENUM('crypto','a_share','us_stock','hk_stock','forex','futures','other') DEFAULT 'crypto',
+    currency VARCHAR(16) DEFAULT '',
     side VARCHAR(16) DEFAULT '',
     price DOUBLE DEFAULT 0,
     qty DOUBLE DEFAULT 0,
@@ -102,8 +105,14 @@ const TABLE_SCHEMAS = [
     INDEX idx_wallet (wallet_address),
     INDEX idx_batch (import_batch),
     INDEX idx_timestamp (timestamp),
-    INDEX idx_symbol (symbol)
+    INDEX idx_symbol (symbol),
+    INDEX idx_market_type (market_type)
   )`,
+
+    // 迁移：为已有表添加新字段（拆成独立语句，兼容 MySQL 8.0）
+    `ALTER TABLE transactions ADD COLUMN ticker VARCHAR(32) DEFAULT '' AFTER symbol`,
+    `ALTER TABLE transactions ADD COLUMN market_type ENUM('crypto','a_share','us_stock','hk_stock','forex','futures','other') DEFAULT 'crypto' AFTER ticker`,
+    `ALTER TABLE transactions ADD COLUMN currency VARCHAR(16) DEFAULT '' AFTER market_type`,
 ];
 
 /**
@@ -130,7 +139,16 @@ async function init() {
 
     // 建表
     for (const sql of TABLE_SCHEMAS) {
-        await pool.execute(sql);
+        try {
+            await pool.execute(sql);
+        } catch (err) {
+            // ALTER TABLE ADD COLUMN IF NOT EXISTS 在部分 MySQL 版本不支持，忽略重复列错误
+            if (err.code === 'ER_DUP_FIELDNAME' || err.errno === 1060) {
+                console.log('[Database] Column already exists, skipping:', err.message);
+            } else {
+                throw err;
+            }
+        }
     }
     console.log('[Database] Tables initialized');
 

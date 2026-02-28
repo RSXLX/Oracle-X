@@ -34,9 +34,9 @@ class DecisionLogger {
    * 获取日志
    */
   async get(limit = 50) {
-    const [rows] = await this.db.execute(
-      'SELECT * FROM decision_logs ORDER BY created_at DESC LIMIT ?',
-      [limit]
+    const safeLimit = Math.max(1, Math.min(parseInt(limit) || 50, 500));
+    const [rows] = await this.db.query(
+      `SELECT * FROM decision_logs ORDER BY created_at DESC LIMIT ${safeLimit}`
     );
     return rows;
   }

@@ -4,6 +4,30 @@
  */
 
 const fs = require('fs');
+const path = require('path');
+
+// 从 .env.local 读取默认 AI 配置
+function loadScreenshotAIConfig() {
+  const envPath = path.join(__dirname, '.env.local');
+  const cfg = { apiKey: '', baseUrl: 'https://mydmx.huoyuanqudao.cn/v1', model: 'MiniMax-M2.5-highspeed' };
+  try {
+    const content = fs.readFileSync(envPath, 'utf-8');
+    for (const line of content.split('\n')) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const eq = t.indexOf('=');
+      if (eq > 0) {
+        const k = t.slice(0, eq).trim(), v = t.slice(eq + 1).trim();
+        if (k === 'AI_API_KEY') cfg.apiKey = v;
+        if (k === 'AI_BASE_URL') cfg.baseUrl = v;
+        if (k === 'AI_MODEL') cfg.model = v;
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return cfg;
+}
+
+const _defaultAICfg = loadScreenshotAIConfig();
 
 /**
  * 截图分析器
@@ -11,9 +35,9 @@ const fs = require('fs');
 class ScreenshotAnalyzer {
   constructor(options = {}) {
     this.provider = options.visionProvider || 'minimax';
-    this.apiKey = options.apiKey || 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq';
-    this.apiBaseUrl = options.apiBaseUrl || 'https://mydmx.huoyuanqudao.cn/v1';
-    this.model = options.model || 'MiniMax-M2.5-highspeed';
+    this.apiKey = options.apiKey || _defaultAICfg.apiKey;
+    this.apiBaseUrl = options.apiBaseUrl || _defaultAICfg.baseUrl;
+    this.model = options.model || _defaultAICfg.model;
 
     this.buttonKeywords = [
       '买入', '卖出', '开多', '开空', '平多', '平空', '做多', '做空',
@@ -52,7 +76,7 @@ class ScreenshotAnalyzer {
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}` } },
-          { type: 'text', text: `分析这张截图。检测是否有交易相关按钮（买入、卖出、开多、开空、BUY、SELL、LONG、SHORT等）。\n返回 JSON：{"hasTradingButtons":true/false,"buttons":["按钮1"],"platform":"平台名","riskLevel":"high/medium/low","action":"block/warn/allow"}` }
+          { type: 'text', text: `分析这张截图。检测是否有交易相关按钮（买入、卖出、开多、开空、BUY、SELL、LONG、SHORT等）。同时尝试识别当前正在交易的品种代码。\n返回 JSON：{"hasTradingButtons":true/false,"buttons":["按钮1"],"platform":"平台名","symbol":"交易品种代码如BTCUSDT/600519/AAPL（无法识别则为null）","marketType":"crypto/a_share/us_stock/hk_stock（无法识别则为null）","riskLevel":"high/medium/low","action":"block/warn/allow"}` }
         ]
       }
     ];
@@ -94,6 +118,8 @@ class ScreenshotAnalyzer {
       hasTradingButtons: false,
       buttons: [],
       platform: 'unknown',
+      symbol: null,
+      marketType: null,
       riskLevel: 'low',
       action: 'allow'
     };
@@ -102,7 +128,9 @@ class ScreenshotAnalyzer {
   parseResult(content) {
     try {
       if (typeof content === 'object') return content;
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      // 去除 markdown 代码块包裹（```json ... ```）
+      let text = content.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }

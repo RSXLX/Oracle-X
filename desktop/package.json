@@ -21,13 +21,51 @@
     "mac": {
       "category": "public.app-category.finance",
       "target": [
+        "dmg",
         "dir"
       ],
       "icon": "icons/icon.png"
     },
+    "dmg": {
+      "title": "Oracle-X NoFOMO",
+      "iconSize": 80,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "icons/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "icons/icon.png",
+      "uninstallerIcon": "icons/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Finance",
+      "icon": "icons"
+    },
     "files": [
       "*.js",
-      "renderer/**/*"
+      "renderer/**/*",
+      ".env.local"
     ]
   },
   "devDependencies": {
@@ -35,6 +73,7 @@
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
+    "https-proxy-agent": "^7.0.6",
     "mysql2": "^3.18.2",
     "uiohook-napi": "^1.5.4",
     "xlsx": "^0.18.5"
