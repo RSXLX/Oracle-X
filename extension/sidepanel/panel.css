@@ -74,7 +74,9 @@ body {
 }
 
 .logo-icon {
-  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .logo-text {
@@ -176,7 +178,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Intent Section */
@@ -330,8 +334,16 @@ body {
 }
 
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Twitter Section */
@@ -367,9 +379,17 @@ body {
   height: 100%;
 }
 
-.bg-green { background: var(--accent-green); }
-.bg-gray { background: #888; }
-.bg-red { background: var(--accent-red); }
+.bg-green {
+  background: var(--accent-green);
+}
+
+.bg-gray {
+  background: #888;
+}
+
+.bg-red {
+  background: var(--accent-red);
+}
 
 .tweets-list {
   display: flex;
@@ -386,9 +406,17 @@ body {
   border: 1px solid transparent;
 }
 
-.tweet-card.positive { border-left: 3px solid var(--accent-green); }
-.tweet-card.negative { border-left: 3px solid var(--accent-red); }
-.tweet-card.neutral { border-left: 3px solid #888; }
+.tweet-card.positive {
+  border-left: 3px solid var(--accent-green);
+}
+
+.tweet-card.negative {
+  border-left: 3px solid var(--accent-red);
+}
+
+.tweet-card.neutral {
+  border-left: 3px solid #888;
+}
 
 .tweet-header {
   display: flex;
@@ -419,6 +447,7 @@ body {
 .tweets-list::-webkit-scrollbar {
   width: 4px;
 }
+
 .tweets-list::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 2px;

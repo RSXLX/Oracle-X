@@ -171,7 +171,7 @@ export default function Home() {
   // 解析结论
   const parseConclusion = (text: string, dir: Direction): ConclusionData => {
     const lowerText = text.toLowerCase();
-    
+
     if (lowerText.includes('高风险') || lowerText.includes('high risk') || lowerText.includes('谨慎') || lowerText.includes('不建议')) {
       return {
         riskLevel: 'high',
@@ -219,7 +219,7 @@ export default function Home() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.logo}>
-          <span className={styles.logoIcon}>🔮</span>
+          <img src="/icons/logo.svg" alt="Oracle-X Logo" className={styles.logoIcon} />
           <span className={styles.logoText}>Oracle-X</span>
         </div>
         <div className={styles.headerRight}>
@@ -264,7 +264,7 @@ export default function Home() {
         <div className={styles.panelSection}>
           {/* Twitter Sentiment */}
           <SentimentPanel symbol={symbol} />
-          
+
           <IndicatorPanel
             indicators={indicators}
             userProfile={USER_PROFILE}
@@ -315,11 +315,11 @@ export default function Home() {
                 {['Technical', 'Market Sentiment', 'Personal Risk'].map((label, i) => (
                   <div key={label} className={styles.progressItem}>
                     <div className={styles.progressBar}>
-                      <div 
-                        className={styles.progressFill} 
-                        style={{ 
-                          width: analysisPhase > i ? '100%' : 
-                                 analysisPhase === i ? '50%' : '0%' 
+                      <div
+                        className={styles.progressFill}
+                        style={{
+                          width: analysisPhase > i ? '100%' :
+                            analysisPhase === i ? '50%' : '0%'
                         }}
                       />
                     </div>

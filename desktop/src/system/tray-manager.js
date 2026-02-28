@@ -19,7 +19,7 @@ class TrayManager {
    * 创建系统托盘
    */
   create() {
-    const iconPath = path.join(__dirname, 'icons', 'icon.png');
+    const iconPath = path.join(__dirname, 'icons', 'icon.svg');
     let icon;
 
     try {
@@ -64,7 +64,7 @@ class TrayManager {
   updateContextMenu(stats = {}) {
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: '🔮 Oracle-X NoFOMO',
+        label: 'Oracle-X NoFOMO',
         enabled: false,
       },
       { type: 'separator' },
