@@ -31,7 +31,7 @@ contextBridge.exposeInMainWorld('oracleDesktop', {
   // File import (CSV / XLSX)
   importFile: () => ipcRenderer.invoke('importFile'),
 
-  // Import history (MySQL)
+  // Import history
   getImportHistory: () => ipcRenderer.invoke('getImportHistory'),
   getTransactionsByBatch: (batchId) => ipcRenderer.invoke('getTransactionsByBatch', batchId),
 
@@ -47,6 +47,13 @@ contextBridge.exposeInMainWorld('oracleDesktop', {
   // Events
   onAppActivated: (callback) => ipcRenderer.on('app-activated', (event, appName) => callback(appName)),
   onScreenshotAnalyzed: (callback) => ipcRenderer.on('screenshot-analyzed', (event, result) => callback(result)),
+  onScreenshotCaptured: (callback) => ipcRenderer.on('screenshot-captured', (event, data) => callback(data)),
+  onScreenshotResult: (callback) => ipcRenderer.on('screenshot-result', (event, result) => callback(result)),
+  onScreenshotError: (callback) => ipcRenderer.on('screenshot-error', (event, data) => callback(data)),
+
+  // Permissions
+  checkPermissions: () => ipcRenderer.invoke('checkPermissions'),
+  toggleAutoMonitor: (enable) => ipcRenderer.invoke('toggleAutoMonitor', enable),
 
   platform: process.platform,
 });

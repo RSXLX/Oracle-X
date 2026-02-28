@@ -131,3 +131,29 @@ export const FEAR_GREED_THRESHOLDS = {
   GREED_MAX: 75,
   // > 75 is Extreme Greed
 } as const;
+
+// ===================================
+// Symbol 别名映射（跨平台标准化）
+// ===================================
+
+export const SYMBOL_ALIASES: Record<string, string> = {
+  'XBTUSD': 'BTCUSDT',
+  'XBTUSDT': 'BTCUSDT',
+  'XBTPERP': 'BTCUSDT',
+  'XXBTZUSD': 'BTCUSDT',
+  'XETHZUSD': 'ETHUSDT',
+  'XXRPZUSD': 'XRPUSDT',
+};
+
+/**
+ * 标准化交易对为 Binance 格式
+ * "BTC/USDT" → "BTCUSDT", "XBTUSD" → "BTCUSDT"
+ */
+export function normalizeSymbol(raw: string): string {
+  if (!raw) return raw;
+  const cleaned = raw.toUpperCase().replace(/[\s\/\-_]/g, '');
+  if (SYMBOL_ALIASES[cleaned]) return SYMBOL_ALIASES[cleaned];
+  // 移除 PERP 后缀
+  const noPerpetual = cleaned.replace(/PERP(ETUAL)?$/, '');
+  return noPerpetual;
+}

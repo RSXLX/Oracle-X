@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle-X - 交易拦截</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #161b22, #1c2333);
+            padding: 16px 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-icon {
+            font-size: 24px;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #f0883e;
+        }
+
+        .header-badge {
+            margin-left: auto;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-low {
+            background: #0ecb8133;
+            color: #0ecb81;
+            border: 1px solid #0ecb8155;
+        }
+
+        .badge-medium {
+            background: #f0b90b33;
+            color: #f0b90b;
+            border: 1px solid #f0b90b55;
+        }
+
+        .badge-high {
+            background: #f6465d33;
+            color: #f6465d;
+            border: 1px solid #f6465d55;
+        }
+
+        .trade-summary {
+            padding: 16px 20px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .trade-pair {
+            font-size: 22px;
+            font-weight: 700;
+            color: #e6edf3;
+            margin-bottom: 6px;
+        }
+
+        .trade-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+            color: #8b949e;
+            flex-wrap: wrap;
+        }
+
+        .trade-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .direction-buy {
+            color: #0ecb81;
+            font-weight: 600;
+        }
+
+        .direction-sell {
+            color: #f6465d;
+            font-weight: 600;
+        }
+
+        .leverage-warn {
+            color: #f0b90b;
+            font-weight: 600;
+        }
+
+        .score-card {
+            margin: 12px 16px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+        }
+
+        .score-card-low {
+            background: #0ecb8110;
+            border-color: #0ecb8130;
+        }
+
+        .score-card-medium {
+            background: #f0b90b10;
+            border-color: #f0b90b30;
+        }
+
+        .score-card-high {
+            background: #f6465d10;
+            border-color: #f6465d30;
+        }
+
+        .score-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .score-label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .score-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .score-low {
+            color: #0ecb81;
+        }
+
+        .score-medium {
+            color: #f0b90b;
+        }
+
+        .score-high {
+            color: #f6465d;
+        }
+
+        .score-reasons {
+            font-size: 11px;
+            color: #8b949e;
+            line-height: 1.6;
+        }
+
+        .score-reasons span {
+            display: inline-block;
+            background: #21262d;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 2px 4px 2px 0;
+        }
+
+        .actions {
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-proceed,
+        .btn-cancel {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-proceed {
+            background: #238636;
+            color: #fff;
+        }
+
+        .btn-proceed:hover {
+            background: #2ea043;
+        }
+
+        .btn-cancel {
+            background: #da3633;
+            color: #fff;
+        }
+
+        .btn-cancel:hover {
+            background: #f85149;
+        }
+
+        .btn-proceed:active,
+        .btn-cancel:active {
+            transform: scale(0.97);
+        }
+
+        .ai-section {
+            margin: 0 16px 16px;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .ai-header {
+            padding: 10px 14px;
+            background: #161b22;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .ai-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .ai-toggle {
+            font-size: 12px;
+            color: #8b949e;
+        }
+
+        .ai-body {
+            padding: 12px 14px;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #c9d1d9;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .ai-body.open {
+            display: block;
+        }
+
+        .ai-loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #8b949e;
+            font-size: 12px;
+        }
+
+        .spinner-small {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .decided {
+            padding: 20px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .decided-proceed {
+            color: #0ecb81;
+        }
+
+        .decided-cancel {
+            color: #f6465d;
+        }
+
+        .auto-close-hint {
+            font-size: 12px;
+            color: #8b949e;
+            margin-top: 6px;
+        }
+
+        .shortcut-hint {
+            text-align: center;
+            padding: 4px;
+            font-size: 11px;
+            color: #484f58;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <span class="header-icon">🛡️</span>
+        <span class="header-title">交易拦截</span>
+        <span class="header-badge" id="levelBadge">--</span>
+    </div>
+
+    <div class="trade-summary">
+        <div class="trade-pair" id="tradePair">加载中...</div>
+        <div class="trade-meta" id="tradeMeta"></div>
+    </div>
+
+    <div class="score-card" id="scoreCard">
+        <div class="score-header">
+            <span class="score-label">⚡ 快速风险评分</span>
+            <span class="score-value" id="scoreValue">--</span>
+        </div>
+        <div class="score-reasons" id="scoreReasons"></div>
+    </div>
+
+    <div class="actions" id="actionsDiv">
+        <button class="btn-proceed" id="btnProceed">✅ 继续交易</button>
+        <button class="btn-cancel" id="btnCancel">❌ 取消</button>
+    </div>
+
+    <div class="shortcut-hint">Enter = 继续 | Esc = 取消</div>
+
+    <div class="ai-section">
+        <div class="ai-header" id="aiHeader">
+            <div class="ai-header-left">
+                <span>🤖</span>
+                <span id="aiStatusText">AI 深度分析中...</span>
+            </div>
+            <span class="ai-toggle" id="aiToggle">▼ 展开</span>
+        </div>
+        <div class="ai-body" id="aiBody">
+            <div class="ai-loading" id="aiLoading">
+                <div class="spinner-small"></div>
+                <span>正在分析，你可以先根据快速评分决策...</span>
+            </div>
+            <div id="aiContent"></div>
+        </div>
+    </div>
+
+    <script src="intercept.js"></script>
+</body>
+
+</html>

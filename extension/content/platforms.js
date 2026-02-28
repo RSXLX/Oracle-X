@@ -184,7 +184,68 @@ const PLATFORMS = {
       '.price',
     ].join(', '),
   },
+
+  // Localhost Mock（本地测试用）
+  localhost: {
+    id: 'localhost',
+    name: 'Mock Exchange',
+    hostname: 'localhost',
+    buyButton: [
+      '.btn-buy',
+      '[data-testid="trade-buy-button"]',
+    ].join(', '),
+    sellButton: [
+      '.btn-sell',
+      '[data-testid="trade-sell-button"]',
+    ].join(', '),
+    symbolSelector: [
+      '.symbol-name',
+      '[data-testid="symbol-display"]',
+    ].join(', '),
+    priceSelector: [
+      '.price-display',
+      '#priceDisplay',
+    ].join(', '),
+    leverageSelector: [
+      '.leverage-badge',
+      '[data-testid="leverage-display"]',
+    ].join(', '),
+    amountSelector: [
+      '#amountInput',
+    ].join(', '),
+  },
 };
+
+// ========== Symbol 别名映射 ==========
+const SYMBOL_ALIASES = {
+  'XBTUSD': 'BTCUSDT',
+  'XBTUSDT': 'BTCUSDT',
+  'XBT/USD': 'BTCUSDT',
+  'XBTPERP': 'BTCUSDT',
+  'XXBTZUSD': 'BTCUSDT',
+  'XETHZUSD': 'ETHUSDT',
+  'XXRPZUSD': 'XRPUSDT',
+};
+
+/**
+ * 标准化交易对为 Binance 格式
+ * @param {string} rawSymbol - 原始交易对
+ * @returns {string|null}
+ */
+function normalizeSymbol(rawSymbol) {
+  if (!rawSymbol) return null;
+  // 移除空格、斜杠、连字符、下划线，转大写
+  let symbol = rawSymbol.toUpperCase().replace(/[\s\/\-_]/g, '');
+  // 检查别名
+  if (SYMBOL_ALIASES[symbol]) return SYMBOL_ALIASES[symbol];
+  // 移除 "永续" "PERP" 等后缀
+  symbol = symbol.replace(/PERP(ETUAL)?$/, '');
+  // 如果没有报价币种，尝试补 USDT
+  if (!symbol.match(/(USDT|USDC|BUSD|USD|BTC|ETH|DAI)$/)) {
+    symbol += 'USDT';
+  }
+  return symbol;
+}
 
 /**
  * 检测当前所在的交易平台
@@ -192,14 +253,14 @@ const PLATFORMS = {
  */
 function detectPlatform() {
   const hostname = window.location.hostname;
-  
+
   for (const platform of Object.values(PLATFORMS)) {
     if (hostname.includes(platform.hostname)) {
       console.log('[Oracle-X] Detected platform:', platform.name);
       return platform;
     }
   }
-  
+
   return null;
 }
 
@@ -210,7 +271,7 @@ function detectPlatform() {
  */
 function findButton(selector) {
   if (!selector) return null;
-  
+
   try {
     const elements = document.querySelectorAll(selector);
     // 返回第一个可见的元素
@@ -226,16 +287,21 @@ function findButton(selector) {
 }
 
 /**
- * 获取页面上的交易信息
+ * 获取页面上的交易信息（增强版）
  * @param {Object} platform - 平台配置
  * @returns {Object} 交易信息
  */
 function getTradeInfo(platform) {
   const info = {
     platform: platform.name,
+    platformId: platform.id,
     symbol: null,
+    normalizedSymbol: null,
     price: null,
     action: null,
+    leverage: null,
+    amount: null,
+    orderType: null,
   };
 
   // 获取交易对
@@ -243,16 +309,76 @@ function getTradeInfo(platform) {
     const symbolEl = document.querySelector(platform.symbolSelector);
     if (symbolEl) {
       info.symbol = symbolEl.textContent?.trim() || symbolEl.innerText?.trim();
+      info.normalizedSymbol = normalizeSymbol(info.symbol);
     }
-  } catch (e) {}
+  } catch (e) { }
 
   // 获取价格
   try {
     const priceEl = document.querySelector(platform.priceSelector);
     if (priceEl) {
-      info.price = priceEl.textContent?.trim() || priceEl.innerText?.trim();
+      const rawPrice = priceEl.textContent?.trim() || priceEl.innerText?.trim();
+      // 提取数字部分
+      info.price = rawPrice?.replace(/[^0-9.,]/g, '') || rawPrice;
     }
-  } catch (e) {}
+  } catch (e) { }
+
+  // 获取杠杆
+  try {
+    const leverageSelectors = [
+      '[class*="leverage"]',
+      '[class*="Leverage"]',
+      '[data-leverage]',
+      '.leverage-value',
+      '.lever-value',
+    ];
+    for (const sel of leverageSelectors) {
+      const el = document.querySelector(sel);
+      if (el) {
+        const text = el.textContent?.trim() || '';
+        const match = text.match(/(\d+)[xX×]/);
+        if (match) {
+          info.leverage = parseInt(match[1], 10);
+          break;
+        }
+      }
+    }
+  } catch (e) { }
+
+  // 获取金额/数量
+  try {
+    const amountSelectors = [
+      'input[class*="amount"]',
+      'input[class*="quantity"]',
+      'input[class*="size"]',
+      'input[placeholder*="数量"]',
+      'input[placeholder*="Amount"]',
+      'input[placeholder*="Quantity"]',
+    ];
+    for (const sel of amountSelectors) {
+      const el = document.querySelector(sel);
+      if (el && el.value) {
+        info.amount = el.value;
+        break;
+      }
+    }
+  } catch (e) { }
+
+  // 获取订单类型
+  try {
+    const orderTypeSelectors = [
+      '[class*="orderType"] .active',
+      '[class*="order-type"] .active',
+      '.order-type-active',
+    ];
+    for (const sel of orderTypeSelectors) {
+      const el = document.querySelector(sel);
+      if (el) {
+        info.orderType = el.textContent?.trim();
+        break;
+      }
+    }
+  } catch (e) { }
 
   return info;
 }
@@ -263,6 +389,8 @@ if (typeof window !== 'undefined') {
     detectPlatform,
     findButton,
     getTradeInfo,
+    normalizeSymbol,
     PLATFORMS,
+    SYMBOL_ALIASES,
   };
 }

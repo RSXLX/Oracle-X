@@ -12,6 +12,7 @@ import { buildSystemPrompt, buildUserPrompt } from '@/lib/prompt-builder';
 import { getAIConfig, callAIStream, transformToSSE } from '@/lib/ai-client';
 import { errorResponse, getRequestId } from '@/lib/api-error';
 import { checkRateLimit, getClientKey } from '@/lib/rate-limit';
+import { normalizeSymbol } from '@/lib/constants';
 import { ProxyAgent, fetch as proxyFetch } from 'undici';
 
 export const runtime = 'nodejs';
@@ -43,6 +44,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: requestData } = validation;
+
+    // 标准化 symbol（兼容各平台格式）
+    requestData.symbol = normalizeSymbol(requestData.symbol);
 
     let klines = requestData.marketData.klines || [];
     let klines4h: typeof klines = [];

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oracle-X 设置</title>
   <link rel="stylesheet" href="settings.css">
 </head>
+
 <body>
   <div class="container">
     <header class="header">
@@ -52,6 +54,43 @@
       </div>
     </section>
 
+    <!-- 智能拦截 -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-icon">🎯</span> 智能拦截 (Smart Intercept)
+      </div>
+      <div class="field checkbox-field">
+        <input type="checkbox" id="enableSmartIntercept" checked />
+        <label for="enableSmartIntercept">启用智能拦截分析</label>
+      </div>
+      <div class="field">
+        <label for="interceptSensitivity">分析灵敏度</label>
+        <select id="interceptSensitivity">
+          <option value="conservative">保守 – 仅高风险时拦截分析</option>
+          <option value="balanced" selected>标准 – 中/高风险时拦截分析</option>
+          <option value="aggressive">激进 – 所有操作都分析</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="lowRiskNotify">低风险通知方式</label>
+        <select id="lowRiskNotify">
+          <option value="bubble" selected>气泡通知（1秒自动消失）</option>
+          <option value="silent">静默放行</option>
+          <option value="off">关闭通知</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="cacheExpiry">分析缓存时间 (秒)</label>
+        <input type="number" id="cacheExpiry" min="60" max="600" value="300" />
+        <span class="field-hint">同品种重复操作时复用缓存结果</span>
+      </div>
+      <div class="field">
+        <label for="apiTimeout">API 超时 (秒)</label>
+        <input type="number" id="apiTimeout" min="3" max="15" value="5" />
+        <span class="field-hint">超时后自动放行，不阻断交易</span>
+      </div>
+    </section>
+
     <!-- 平台监控 -->
     <section class="card">
       <div class="card-header">
@@ -73,4 +112,5 @@
 
   <script src="settings.js"></script>
 </body>
+
 </html>

@@ -1,6 +1,6 @@
 {
   "name": "oracle-x-desktop",
-  "version": "1.4.0",
+  "version": "2.1.0",
   "description": "Oracle-X NoFOMO - AI Trading Assistant",
   "main": "main.js",
   "author": "Oracle-X Team",
@@ -73,8 +73,8 @@
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "https-proxy-agent": "^7.0.6",
-    "mysql2": "^3.18.2",
     "uiohook-napi": "^1.5.4",
     "xlsx": "^0.18.5"
   }

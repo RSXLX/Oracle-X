@@ -25,12 +25,33 @@
 
     <!-- 监控面板 -->
     <section id="panel-monitor" class="panel active">
+      <!-- 快速操作 -->
       <section class="card">
-        <h2>👁️ 全局监控</h2>
+        <h2>📸 截图分析</h2>
+        <p class="hint">截取当前屏幕，AI 自动识别交易平台和操作按钮并评估风险</p>
+        <div class="actions">
+          <button id="screenshotBtn" class="btn btn-primary">📸 立即截图分析</button>
+          <span class="hint" style="margin-left:8px;">快捷键：Cmd+Shift+S</span>
+        </div>
+        <div id="screenshotStatus"></div>
+      </section>
+
+      <!-- 分析记录 -->
+      <section class="card">
+        <h2>📋 分析记录</h2>
+        <div id="screenshotLog">
+          <p class="muted">暂无记录，截图分析后将在此显示</p>
+        </div>
+      </section>
+
+      <!-- 监控设置 -->
+      <section class="card">
+        <h2>⚙️ 监控设置</h2>
         <div class="form-group">
           <label>监控模式
             <select id="monitorMode">
-              <option value="screenshot">截图 AI 分析</option>
+              <option value="manual">手动截图</option>
+              <option value="screenshot">自动截图 AI 分析</option>
               <option value="accessibility">应用监听</option>
             </select>
           </label>
@@ -43,11 +64,15 @@
           <label class="checkbox"><input type="checkbox" id="app_coinbase" /> Coinbase</label>
         </div>
       </section>
+
+      <!-- 今日统计 -->
       <section class="card">
         <h2>📊 今日统计</h2>
         <div class="stats-grid">
-          <div class="stat"><span class="stat-label">阻断</span><span class="stat-value" id="todayBlock">0</span></div>
-          <div class="stat"><span class="stat-label">化解</span><span class="stat-value" id="mitigationRate">0%</span>
+          <div class="stat"><span class="stat-label">截图分析</span><span class="stat-value" id="todayAnalyses">0</span>
+          </div>
+          <div class="stat"><span class="stat-label">风险检测</span><span class="stat-value" id="todayBlock">0</span></div>
+          <div class="stat"><span class="stat-label">化解率</span><span class="stat-value" id="mitigationRate">0%</span>
           </div>
         </div>
       </section>
@@ -232,6 +257,25 @@
       </section>
     </section>
   </main>
+
+  <!-- 侧边栏分析面板 -->
+  <div class="side-panel-overlay" id="sidePanelOverlay"></div>
+  <div class="side-panel" id="sidePanel">
+    <div class="side-panel-header">
+      <h2 id="sidePanelTitle">🔍 AI 分析</h2>
+      <button class="side-panel-close" id="sidePanelClose">✕</button>
+    </div>
+    <div class="side-panel-body" id="sidePanelBody">
+      <div class="loading">等待分析...</div>
+    </div>
+    <div class="side-panel-actions" id="sidePanelActions" style="display:none;">
+      <button class="btn btn-accent" id="sidePanelBlock">🛑 取消交易</button>
+      <button class="btn btn-secondary" id="sidePanelAllow">✅ 继续交易</button>
+    </div>
+  </div>
+
+  <!-- 通知堆叠 -->
+  <div class="notification-stack" id="notificationStack"></div>
 
   <script src="renderer.js"></script>
 </body>
