@@ -1,11 +1,13 @@
 # Dependencies
 node_modules/
 /.pnp
-*.backup
 .pnp.js
 
 # Testing
 /coverage
+/tests/
+/test_data/
+/test-api.js
 *.log
 
 # Next.js
@@ -32,9 +34,7 @@ yarn-error.log*
 # Local env files
 .env
 .env*.local
-.env.development.local
-.env.test.local
-.env.production.local
+desktop/.env.local
 
 # Vercel
 .vercel
@@ -65,8 +65,27 @@ $RECYCLE.BIN/
 *.temp
 .cache/
 
+# Backup files
+*.backup
+
 # Local runtime data
 /data/
+
+# Desktop build output
 desktop/release/
-desktop/release/
-desktop/release/
+desktop/node_modules/
+
+# Scripts (dev/debug only)
+/scripts/
+
+# Demo / draft files
+/demo.md
+
+# Test mock pages
+/public/mock-binance.html
+
+# Temp data files
+desktop/*.xlsx
+
+#文档
+/docs
