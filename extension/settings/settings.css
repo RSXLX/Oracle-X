@@ -256,3 +256,43 @@ body {
 .toast.error {
   background: var(--accent-red);
 }
+
+/* Desktop 连接状态横幅 */
+.desktop-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s;
+}
+
+.desktop-status.checking {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
+  color: var(--text-secondary);
+}
+
+.desktop-status.connected {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.desktop-status.disconnected {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* 禁用字段样式（Desktop 已托管时） */
+.field input:disabled,
+.field select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: dashed;
+}

@@ -60,20 +60,62 @@ function parseApiError(errorPayload, fallbackMessage) {
   };
 }
 
+// Desktop 本地服务地址
+const DESKTOP_API = 'http://127.0.0.1:17891';
+const DESKTOP_PING_TIMEOUT = 500; // ms
+
 /**
- * 获取 API Base URL（支持 storage 覆盖）
+ * 探测 Desktop 本地服务并返回配置
+ * 成功返回 Desktop 配置对象，失败返回 null
  */
-async function getApiBaseUrl() {
+async function fetchDesktopSettings() {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), DESKTOP_PING_TIMEOUT);
+    const res = await fetch(`${DESKTOP_API}/api/settings`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function getExtensionSettings() {
   return new Promise((resolve) => {
-    chrome.storage.local.get([API_BASE_URL_STORAGE_KEY], (result) => {
-      const value = result?.[API_BASE_URL_STORAGE_KEY];
-      if (typeof value === 'string' && value.trim()) {
-        resolve(value.trim().replace(/\/$/, ''));
+    chrome.storage.local.get(['oraclexBackendUrl', 'oraclexAiBaseUrl', 'oraclexAiApiKey', 'oraclexAiModel', 'oraclexAiVisionModel', 'oraclexApiBaseUrl'], async (result) => {
+      const local = {
+        backendUrl: result.oraclexBackendUrl || result.oraclexApiBaseUrl || 'http://localhost:3000',
+        aiBaseUrl: (result.oraclexAiBaseUrl || 'https://api.stepfun.com/v1').replace(/\/$/, ''),
+        aiApiKey: result.oraclexAiApiKey || '',
+        aiModel: result.oraclexAiModel || 'step-1-8k',
+        aiVisionModel: result.oraclexAiVisionModel || 'step-1o-turbo-vision',
+      };
+
+      // Desktop 优先：尝试从 Desktop 本地服务获取配置
+      const desktop = await fetchDesktopSettings();
+      if (desktop) {
+        resolve({
+          backendUrl: `${DESKTOP_API}`,  // 行情、ticker 表继续自从 Desktop 拿
+          aiBaseUrl: desktop.aiBaseUrl || local.aiBaseUrl,
+          aiApiKey: desktop.aiApiKey || local.aiApiKey,
+          aiModel: desktop.aiModel || local.aiModel,
+          aiVisionModel: desktop.aiVisionModel || local.aiVisionModel,
+        });
       } else {
-        resolve(DEFAULT_API_BASE_URL);
+        // Desktop 不在线，降级到本地 chrome.storage 配置
+        resolve(local);
       }
     });
   });
+}
+
+/**
+ * 获取 API Base URL（用于传统的获取行情/推特）
+ */
+async function getApiBaseUrl() {
+  const settings = await getExtensionSettings();
+  return settings.backendUrl;
 }
 
 /**
@@ -140,27 +182,103 @@ async function captureAndAnalyze(tab) {
 }
 
 /**
- * 调用视觉识别 API
+ * 调用视觉识别 — Desktop 优先，降级到 Extension 本地 Vision API
  */
 async function callRecognizeAPI(screenshotBase64) {
-  // 移除 data:image/png;base64, 前缀
-  const base64Data = screenshotBase64.replace(/^data:image\/\w+;base64,/, '');
-  const apiBaseUrl = await getApiBaseUrl();
+  // 尝试 Desktop 代理
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(`${DESKTOP_API}/api/recognize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ screenshot: screenshotBase64 }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (res.ok) {
+      const result = await res.json();
+      if (result && result.platform !== undefined) return result;
+    }
+  } catch { }
 
-  const response = await fetch(`${apiBaseUrl}/api/recognize`, {
+  // 降级：Extension 自身调 Vision API
+  console.log('[Oracle-X] Desktop unavailable, fallback to local Vision AI');
+  return callRecognizeAPILocal(screenshotBase64);
+}
+
+/**
+ * 原有视觉识别逻辑（Extension 自身调 Vision API，作为降级 fallback）
+ */
+async function callRecognizeAPILocal(screenshotBase64) {
+  const settings = await getExtensionSettings();
+  if (!settings.aiApiKey) {
+    throw new Error('AI API Key 未配置，请在扩展设置中填写。');
+  }
+
+  const base64Data = screenshotBase64.startsWith('data:') ? screenshotBase64 : `data:image/png;base64,${screenshotBase64.replace(/^data:image\/\w+;base64,/, '')}`;
+
+  const prompt = `你是一个专业的交易界面识别专家。请分析这张交易平台截图，提取以下信息：
+
+1. **平台** (platform): 识别交易平台名称，如 Binance、OKX、Bybit、Coinbase、Uniswap 等
+2. **交易对** (pair): 识别正在查看的交易对，如 BTC/USDT、ETH/USDT 等
+3. **交易类型** (trade_type): 判断是现货(spot)、永续合约(perpetual)还是交割合约(futures)
+4. **方向提示** (direction_hint): 如果界面上有明显的做多/做空按钮被选中或价格走势暗示，给出方向提示
+
+请严格按以下 JSON 格式输出（不要添加任何其他文字）：
+{
+  "platform": "平台名称",
+  "pair": "交易对（格式：BASE/QUOTE）",
+  "trade_type": "spot|perpetual|futures",
+  "direction_hint": "long|short|null",
+  "confidence": 0-100之间的置信度
+}
+
+如果无法识别某个字段，使用 null。`;
+
+  const response = await fetch(`${settings.aiBaseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
+      'Authorization': `Bearer ${settings.aiApiKey}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ image: base64Data })
+    body: JSON.stringify({
+      model: settings.aiVisionModel,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: base64Data } },
+            { type: 'text', text: prompt }
+          ]
+        }
+      ],
+      temperature: 0.2,
+      max_tokens: 500,
+      stream: false
+    })
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw parseApiError(error, 'Recognition failed');
+    const errorText = await response.text();
+    throw new Error(`Vision AI error: ${response.status} - ${errorText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+
+  let result;
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      result = JSON.parse(jsonMatch[0]);
+    } else {
+      throw new Error('No JSON found in response');
+    }
+  } catch {
+    result = { platform: null, pair: null, trade_type: null, direction_hint: null, confidence: 0 };
+  }
+  return result;
 }
 
 /**
@@ -356,16 +474,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * 处理分析请求
+ * 处理分析请求 — Desktop 优先，降级到 Extension 本地 AI
  */
 async function handleAnalysis(data) {
-  const { symbol, direction, marketData } = data;
+  // 尝试通过 Desktop 代理分析
+  const desktopOk = await tryDesktopAnalysis(data);
+  if (desktopOk) return { fullText: desktopOk };
 
+  // 降级：Extension 自身 AI 逻辑
+  console.log('[Oracle-X] Desktop unavailable, fallback to local AI');
+  return handleAnalysisFallback(data);
+}
+
+/**
+ * 通过 Desktop /api/analyze 进行 SSE 流式分析
+ * 成功返回 fullText，失败返回 null
+ */
+async function tryDesktopAnalysis(data) {
   try {
-    const response = await callAnalyzeAPI(symbol, direction, marketData);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(`${DESKTOP_API}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!response.ok) return null;
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-
     let fullText = '';
 
     while (true) {
@@ -377,41 +518,148 @@ async function handleAnalysis(data) {
 
       for (const line of lines) {
         if (!line.startsWith('data:')) continue;
-        const data = line.slice(5).trim();
-        if (data === '[DONE]') continue;
+        const dataStr = line.slice(5).trim();
+        if (dataStr === '[DONE]') continue;
 
         try {
-          const parsed = JSON.parse(data);
-          if (parsed.content) {
-            fullText += parsed.content;
-            // 流式发送到 Side Panel
+          const parsed = JSON.parse(dataStr);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) {
+            fullText += content;
             chrome.runtime.sendMessage({
               type: 'ANALYSIS_STREAM',
-              data: { content: parsed.content, fullText }
+              data: { content, fullText }
             });
           }
-        } catch {
-          // 忽略解析错误
-        }
+        } catch { }
       }
     }
 
-    // 分析完成
+    chrome.runtime.sendMessage({
+      type: 'ANALYSIS_COMPLETE',
+      data: { fullText }
+    });
+
+    return fullText;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 原有分析逻辑（Extension 自身调 AI，作为降级 fallback）
+ */
+async function handleAnalysisFallback(data) {
+  const { symbol, direction, marketData } = data;
+  const settings = await getExtensionSettings();
+
+  if (!settings.aiApiKey) {
+    chrome.runtime.sendMessage({
+      type: 'ANALYSIS_ERROR',
+      data: { error: 'AI API Key 未配置，请在扩展设置中填写。' }
+    });
+    throw new Error('Missing AI API Key');
+  }
+
+  try {
+    // 1. 尝试从本地后端获取复杂指标，作为附加参考
+    let backendMarketData = null;
+    try {
+      if (settings.backendUrl) {
+        const res = await fetch(`${settings.backendUrl}/api/market?symbol=${symbol}`);
+        if (res.ok) backendMarketData = await res.json();
+      }
+    } catch {
+      console.log('[Oracle-X] Backend unavailable, fallback to basic analysis');
+    }
+
+    // 2. 构造 Prompt
+    let prompt = `请作为一名资深的加密货币交易员，对 ${symbol} 的 ${direction === 'LONG' ? '做多' : '做空'} 交易进行风险评估。\n\n`;
+    prompt += `【当前基础行情】\n价格: $${marketData.price}\n24h涨跌: ${marketData.change24h}%\n24h高/低: $${marketData.high24h} / $${marketData.low24h}\n24h成交量: ${marketData.volume}\n\n`;
+
+    if (backendMarketData && backendMarketData.indicators) {
+      prompt += `【高级技术指标】\n`;
+      const inds = backendMarketData.indicators;
+      if (inds.rsi) prompt += `- RSI(14): ${inds.rsi.description}\n`;
+      if (inds.macd) prompt += `- MACD: ${inds.macd.description}\n`;
+      if (inds.bollingerBands) prompt += `- 布林带: ${inds.bollingerBands.description}\n`;
+      if (inds.atr) prompt += `- ATR: ${inds.atr.description}\n`;
+      prompt += '\n';
+    } else {
+      prompt += `（未提供高级技术指标，请以基础行情和截图信息为主）\n\n`;
+    }
+
+    if (backendMarketData && backendMarketData.sentiment) {
+      prompt += `【社交情绪】\n综合情绪: ${backendMarketData.sentiment.overallSentiment} (置信度 ${backendMarketData.sentiment.confidencePercent}%)\n\n`;
+    }
+
+    prompt += `请综合上述数据，给出：\n1. 核心观点（看多/看空/震荡）\n2. 风险提示\n3. 最终操作建议（包含 🟢建议执行 或 🟡建议观望 或 🔴高风险）及简短理由。保持专业和简练。`;
+
+    const systemPrompt = "你是一个冷静、客观、极度注重风险控制的顶级交易系统AI。你精通技术分析，总是试图寻找交易的潜在漏洞和高危信号。请直接输出分析内容，不要出现客套话。";
+
+    // 3. 直接请求大模型
+    const response = await fetch(`${settings.aiBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${settings.aiApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: settings.aiModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+        stream: true
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI error: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const dataStr = line.slice(5).trim();
+        if (dataStr === '[DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(dataStr);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) {
+            fullText += content;
+            chrome.runtime.sendMessage({
+              type: 'ANALYSIS_STREAM',
+              data: { content, fullText }
+            });
+          }
+        } catch { }
+      }
+    }
+
     chrome.runtime.sendMessage({
       type: 'ANALYSIS_COMPLETE',
       data: { fullText }
     });
 
     return { fullText };
-
   } catch (error) {
     chrome.runtime.sendMessage({
       type: 'ANALYSIS_ERROR',
-      data: {
-        error: error?.message || 'Analysis failed',
-        code: error?.code,
-        requestId: error?.requestId,
-      }
+      data: { error: error?.message || 'Analysis failed' }
     });
     throw error;
   }
@@ -500,6 +748,7 @@ async function handleTradeIntercept(data, sender) {
 
 async function handleLogInterceptDecision(data) {
   try {
+    // 1. 写入 chrome.storage（插件自身本地存储）
     const result = await new Promise((resolve) => {
       chrome.storage.local.get('oraclex_intercept_logs', (r) => resolve(r));
     });
@@ -508,6 +757,19 @@ async function handleLogInterceptDecision(data) {
     await new Promise((resolve) => {
       chrome.storage.local.set({ oraclex_intercept_logs: logs.slice(0, 1000) }, resolve);
     });
+
+    // 2. 同步写入 Desktop SQLite（fire-and-forget，失败静默）
+    fetch(`${DESKTOP_API}/api/log-intercept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'intercept_from_extension',
+        appName: data.symbol ? `Chrome Extension (${data.symbol})` : 'Chrome Extension',
+        action: data.userAction || 'unknown',
+        detail: { symbol: data.symbol, direction: data.direction, analysisText: data.analysisText },
+      }),
+    }).catch(() => { /* Desktop 不在线时静默失败 */ });
+
   } catch (err) {
     console.error('[Oracle-X] Failed to save intercept log:', err);
   }

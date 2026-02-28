@@ -1,6 +1,6 @@
 {
   "name": "oracle-x-desktop",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Oracle-X NoFOMO - AI Trading Assistant",
   "main": "src/main.js",
   "author": "Oracle-X Team",

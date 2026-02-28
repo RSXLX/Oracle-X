@@ -29,7 +29,7 @@ function normalizeBaseUrl(baseUrl: string): string {
  */
 export function getAIConfig(): AIClientConfig {
   return {
-    apiKey: process.env.STEP_API_KEY || '',
+    apiKey: process.env.AI_API_KEY || process.env.STEP_API_KEY || '',
     model: process.env.AI_MODEL || 'step-1-8k',
     baseUrl: normalizeBaseUrl(process.env.AI_BASE_URL || 'https://api.stepfun.com/v1'),
     temperature: parseFloat(process.env.AI_TEMPERATURE || '0.3'),
@@ -93,9 +93,9 @@ export function transformToSSE(aiResponse: Response): ReadableStream {
       try {
         while (true) {
           const { done, value } = await reader.read();
-          
+
           if (done) break;
-          
+
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
@@ -103,9 +103,9 @@ export function transformToSSE(aiResponse: Response): ReadableStream {
           for (const line of lines) {
             const trimmed = line.trim();
             if (!trimmed || !trimmed.startsWith('data:')) continue;
-            
+
             const data = trimmed.slice(5).trim();
-            
+
             if (data === '[DONE]') {
               controller.enqueue(encoder.encode('data: [DONE]\n\n'));
               continue;
@@ -114,7 +114,7 @@ export function transformToSSE(aiResponse: Response): ReadableStream {
             try {
               const parsed = JSON.parse(data);
               const content = parsed.choices?.[0]?.delta?.content;
-              
+
               if (content) {
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ content })}\n\n`)
@@ -125,7 +125,7 @@ export function transformToSSE(aiResponse: Response): ReadableStream {
             }
           }
         }
-        
+
         // 发送结束标记
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
       } catch (error) {
@@ -145,7 +145,7 @@ export function transformToSSE(aiResponse: Response): ReadableStream {
  */
 export function getVisionConfig(): AIClientConfig {
   return {
-    apiKey: process.env.STEP_API_KEY || '',
+    apiKey: process.env.AI_API_KEY || process.env.STEP_API_KEY || '',
     model: process.env.AI_VISION_MODEL || 'step-1o-turbo-vision',
     baseUrl: normalizeBaseUrl(process.env.AI_BASE_URL || 'https://api.stepfun.com/v1'),
     temperature: 0.2, // 识别任务使用更低温度
@@ -162,8 +162,8 @@ export async function callVisionAI(
   config: AIClientConfig
 ): Promise<string> {
   // 确保 base64 格式正确
-  const imageUrl = imageBase64.startsWith('data:') 
-    ? imageBase64 
+  const imageUrl = imageBase64.startsWith('data:')
+    ? imageBase64
     : `data:image/png;base64,${imageBase64}`;
 
   const response = await fetch(`${config.baseUrl}/chat/completions`, {

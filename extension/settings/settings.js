@@ -15,7 +15,11 @@ const PLATFORMS = [
 ];
 
 const DEFAULT_SETTINGS = {
-    apiBaseUrl: 'http://localhost:3000',
+    backendUrl: 'http://localhost:3000',
+    aiBaseUrl: 'https://mydmx.huoyuanqudao.cn/v1',
+    aiApiKey: '',
+    aiModel: 'MiniMax-M2.5-highspeed',
+    aiVisionModel: 'MiniMax-M2.5-highspeed',
     riskProfile: 'balanced',
     coolingTime: 20,
     enableNoFomoBlock: true,
@@ -27,6 +31,47 @@ const DEFAULT_SETTINGS = {
     cacheExpiry: 300,
     apiTimeout: 5,
 };
+
+// === Desktop 连接状态 ===
+
+const DESKTOP_API = 'http://127.0.0.1:17891';
+
+async function checkDesktopStatus() {
+    const statusEl = document.getElementById('desktopStatus');
+    const dotEl = document.getElementById('desktopStatusDot');
+    const textEl = document.getElementById('desktopStatusText');
+    if (!statusEl) return;
+
+    try {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 600);
+        const res = await fetch(`${DESKTOP_API}/api/settings`, { signal: controller.signal });
+        if (res.ok) {
+            const desktop = await res.json();
+            // 已连接
+            statusEl.className = 'desktop-status connected';
+            textEl.textContent = '🟢 已连接 Oracle-X Desktop – AI 配置由桌面端统一管理';
+            // 自动填入 Desktop 配置，并设置只读
+            if (desktop.aiBaseUrl) {
+                document.getElementById('aiBaseUrl').value = desktop.aiBaseUrl;
+                document.getElementById('aiBaseUrl').disabled = true;
+            }
+            if (desktop.aiApiKey) {
+                document.getElementById('aiApiKey').value = '•••••• (来自 Desktop)';
+                document.getElementById('aiApiKey').disabled = true;
+            }
+            if (desktop.aiModel) {
+                document.getElementById('aiModel').value = desktop.aiModel;
+                document.getElementById('aiModel').disabled = true;
+            }
+            return;
+        }
+    } catch { /* 连接失败 */ }
+
+    // 未连接
+    statusEl.className = 'desktop-status disconnected';
+    textEl.textContent = '🔴 未连接 – 独立模式，请手动填写 AI 配置';
+}
 
 // === UI 初始化 ===
 
@@ -62,9 +107,14 @@ async function saveSettings(settings) {
     return new Promise((resolve) => {
         // eslint-disable-next-line no-undef
         chrome.storage.local.set({ oraclexSettings: settings }, () => {
-            // 同时写入 oraclexApiBaseUrl 以兼容旧版 background.js
-            // eslint-disable-next-line no-undef
-            chrome.storage.local.set({ oraclexApiBaseUrl: settings.apiBaseUrl }, resolve);
+            // 同时单独存 key 可能会更方便 background 读取
+            chrome.storage.local.set({
+                oraclexBackendUrl: settings.backendUrl,
+                oraclexAiBaseUrl: settings.aiBaseUrl,
+                oraclexAiApiKey: settings.aiApiKey,
+                oraclexAiModel: settings.aiModel,
+                oraclexAiVisionModel: settings.aiVisionModel
+            }, resolve);
         });
     });
 }
@@ -72,7 +122,12 @@ async function saveSettings(settings) {
 // === 填充 / 收集表单 ===
 
 function fillForm(settings) {
-    document.getElementById('apiBaseUrl').value = settings.apiBaseUrl || '';
+    document.getElementById('backendUrl').value = settings.backendUrl || '';
+    document.getElementById('aiBaseUrl').value = settings.aiBaseUrl || '';
+    document.getElementById('aiApiKey').value = settings.aiApiKey || '';
+    document.getElementById('aiModel').value = settings.aiModel || '';
+    document.getElementById('aiVisionModel').value = settings.aiVisionModel || '';
+
     document.getElementById('riskProfile').value = settings.riskProfile || 'balanced';
     document.getElementById('coolingTime').value = settings.coolingTime || 20;
     document.getElementById('enableNoFomoBlock').checked = settings.enableNoFomoBlock !== false;
@@ -97,7 +152,11 @@ function collectForm() {
     });
 
     return {
-        apiBaseUrl: document.getElementById('apiBaseUrl').value.trim() || DEFAULT_SETTINGS.apiBaseUrl,
+        backendUrl: document.getElementById('backendUrl').value.trim() || DEFAULT_SETTINGS.backendUrl,
+        aiBaseUrl: document.getElementById('aiBaseUrl').value.trim() || DEFAULT_SETTINGS.aiBaseUrl,
+        aiApiKey: document.getElementById('aiApiKey').value.trim(),
+        aiModel: document.getElementById('aiModel').value.trim() || DEFAULT_SETTINGS.aiModel,
+        aiVisionModel: document.getElementById('aiVisionModel').value.trim() || DEFAULT_SETTINGS.aiVisionModel,
         riskProfile: document.getElementById('riskProfile').value,
         coolingTime: Math.max(5, Math.min(120, parseInt(document.getElementById('coolingTime').value, 10) || 20)),
         enableNoFomoBlock: document.getElementById('enableNoFomoBlock').checked,
@@ -115,6 +174,7 @@ function collectForm() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     renderPlatforms();
+    checkDesktopStatus();
 
     const settings = await loadSettings();
     fillForm(settings);

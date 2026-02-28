@@ -18,15 +18,37 @@
       <span class="version-badge">设置</span>
     </header>
 
-    <!-- API 配置 -->
+    <!-- Desktop 连接状态 -->
+    <div id="desktopStatus" class="desktop-status checking">
+      <span id="desktopStatusDot" class="status-dot"></span>
+      <span id="desktopStatusText">正在检测 Oracle-X Desktop...</span>
+    </div>
+
     <section class="card">
       <div class="card-header">
-        <span class="card-icon">🔑</span> API 配置
+        <span class="card-icon">🔑</span> API及模型配置
       </div>
       <div class="field">
-        <label for="apiBaseUrl">API 基础地址</label>
-        <input type="text" id="apiBaseUrl" placeholder="http://localhost:3000" />
-        <span class="field-hint">Next.js 后端服务地址</span>
+        <label for="backendUrl">后端服务地址 (可选)</label>
+        <input type="text" id="backendUrl" placeholder="http://localhost:3000" />
+        <span class="field-hint">Desktop 在线时自动使用本地服务，无需填写</span>
+      </div>
+      <div class="field">
+        <label for="aiBaseUrl">大模型接口地址</label>
+        <input type="text" id="aiBaseUrl" placeholder="https://api.stepfun.com/v1" />
+        <span class="field-hint">OpenAI 兼容的网关地址</span>
+      </div>
+      <div class="field">
+        <label for="aiApiKey">API 密钥 (API Key)</label>
+        <input type="password" id="aiApiKey" placeholder="sk-..." />
+      </div>
+      <div class="field">
+        <label for="aiModel">核心分析模型</label>
+        <input type="text" id="aiModel" placeholder="step-1-8k" />
+      </div>
+      <div class="field">
+        <label for="aiVisionModel">视觉识别模型</label>
+        <input type="text" id="aiVisionModel" placeholder="step-1o-turbo-vision" />
       </div>
     </section>
 

@@ -72,6 +72,7 @@ const { SettingsStorage } = require('./data/settings-storage');
 const { StatsTracker } = require('./system/stats-tracker');
 const { DecisionLogger } = require('./data/decision-logger');
 const { I18nMain } = require('./i18n-main');
+const { startLocalServer, stopLocalServer } = require('./local-server');
 
 const i18n = new I18nMain();
 
@@ -296,6 +297,11 @@ async function initAll() {
     },
   });
 
+  // ===== 启动本地 HTTP 服务（供 Extension / WebApp 读取配置） =====
+  // 用 { current: settings } 的方式传引用，确保 settings 被 saveSettings 更新后 HTTP 接口也实时反映最新值
+  const settingsRef = { get current() { return settings; } };
+  startLocalServer(settingsRef, marketData, decisionLogger);
+
   // 只有用户显式开启自动监控时才启动
   if (settings.autoMonitorEnabled && monitor) {
     const { PermissionManager } = require('./system/permission-manager');
@@ -466,7 +472,7 @@ async function showSmartWarning(appName, report) {
   // 记录决策日志
   if (decisionLogger) {
     try {
-      await decisionLogger.log({
+      await decisionLogger.add({
         type: 'interception',
         appName,
         action: result.response === 1 ? 'proceed' : 'cancelled',
@@ -840,6 +846,7 @@ app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
   if (monitor) monitor.stop();
   if (trayManager) trayManager.destroy();
+  stopLocalServer();
   // 清理截图临时文件
   cleanupScreenshotFiles();
   // 关闭数据库连接
