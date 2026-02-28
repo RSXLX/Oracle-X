@@ -20,19 +20,19 @@ jobs:
         with:
           node-version: 20
 
+      - name: Generate app icon from logo
+        run: |
+          sips -s format png -z 512 512 extension/icons/logo.jpg --out desktop/icons/icon.png
+
       - name: Install dependencies
         working-directory: desktop
         run: npm ci
 
-      - name: Rebuild native modules
+      - name: Build macOS dmg
         working-directory: desktop
-        run: npx @electron/rebuild
-
-      - name: Build macOS (Intel + Apple Silicon)
-        working-directory: desktop
-        run: |
-          npx electron-builder --mac --x64
-          npx electron-builder --mac --arm64
+        run: npx electron-builder --mac --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2

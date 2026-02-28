@@ -25,7 +25,7 @@
         "dmg",
         "dir"
       ],
-      "icon": "icons/icon.svg"
+      "icon": "icons/icon.png"
     },
     "dmg": {
       "title": "Oracle-X NoFOMO",
@@ -47,13 +47,13 @@
       "target": [
         "nsis"
       ],
-      "icon": "icons/icon.svg"
+      "icon": "icons/icon.png"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "icons/icon.svg",
-      "uninstallerIcon": "icons/icon.svg"
+      "installerIcon": "icons/icon.png",
+      "uninstallerIcon": "icons/icon.png"
     },
     "linux": {
       "target": [
@@ -65,7 +65,8 @@
     },
     "files": [
       "src/**/*",
-      "renderer/**/*"
+      "renderer/**/*",
+      "icons/**/*"
     ]
   },
   "devDependencies": {
