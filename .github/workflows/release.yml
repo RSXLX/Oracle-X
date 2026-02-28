@@ -1,0 +1,43 @@
+name: Build & Release Desktop (macOS)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Rebuild native modules
+        working-directory: desktop
+        run: npx @electron/rebuild
+
+      - name: Build macOS (Intel + Apple Silicon)
+        working-directory: desktop
+        run: |
+          npx electron-builder --mac --x64
+          npx electron-builder --mac --arm64
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            desktop/release/*.dmg
+            desktop/release/*.zip
+          generate_release_notes: true

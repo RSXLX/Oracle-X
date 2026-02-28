@@ -502,10 +502,56 @@ function setupIPC() {
     if (settingsStorage) await settingsStorage.save(settings);
     if (monitor) { monitor.targetApps = settings.targetApps; monitor.mode = settings.monitorMode; }
     if (screenshotAnalyzer) screenshotAnalyzer.configure({ visionProvider: settings.aiProvider, apiKey: settings.apiKey, apiBaseUrl: settings.apiBaseUrl, model: settings.aiModel });
+    if (aiTradeAnalyzer) {
+      aiTradeAnalyzer.baseUrl = settings.apiBaseUrl;
+      aiTradeAnalyzer.apiKey = settings.apiKey;
+      aiTradeAnalyzer.model = settings.aiModel;
+    }
+    // 代理热更新
+    if (settings.proxyUrl) {
+      process.env.HTTPS_PROXY = settings.proxyUrl;
+      process.env.HTTP_PROXY = settings.proxyUrl;
+      process.env.https_proxy = settings.proxyUrl;
+      process.env.http_proxy = settings.proxyUrl;
+    }
 
     if (autoStartManager && settings.autoStart) autoStartManager.toggle(settings.autoStart);
     if (notificationManager) notificationManager.setEnabled(settings.notifications);
     return true;
+  });
+
+  // ==================== 测试 AI 连接 ====================
+  ipcMain.handle('testAIConnection', async () => {
+    try {
+      const baseUrl = (settings.apiBaseUrl || '').replace(/\/+$/, '');
+      const apiKey = settings.apiKey || '';
+      if (!baseUrl || !apiKey) return false;
+
+      const fetchOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: settings.aiModel || 'gpt-4o-mini',
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 5,
+        }),
+      };
+
+      // 支持代理
+      if (settings.proxyUrl) {
+        const { HttpsProxyAgent } = require('https-proxy-agent');
+        fetchOptions.agent = new HttpsProxyAgent(settings.proxyUrl);
+      }
+
+      const res = await fetch(`${baseUrl}/chat/completions`, fetchOptions);
+      return res.ok;
+    } catch (err) {
+      console.error('[TestAI] Error:', err.message);
+      return false;
+    }
   });
 
   // ==================== 连接测试 ====================

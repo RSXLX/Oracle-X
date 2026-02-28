@@ -251,6 +251,37 @@ a {
     transform: translateY(-3px);
 }
 
+.btn-download {
+    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+    color: white;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+.btn-download:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.5);
+}
+
+.card-download-link {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 20px;
+    color: #a78bfa;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: var(--transition-smooth);
+}
+
+.card-download-link:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3));
+    border-color: rgba(139, 92, 246, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
 /* ===== Features Section ===== */
 .matrix-section {
     padding: 100px 24px;

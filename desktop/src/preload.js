@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('oracleDesktop', {
 
   // Connection
   testConnection: () => ipcRenderer.invoke('testConnection'),
+  testAIConnection: () => ipcRenderer.invoke('testAIConnection'),
 
   // Decision logs
   listDecisionLogs: (limit) => ipcRenderer.invoke('listDecisionLogs', limit),

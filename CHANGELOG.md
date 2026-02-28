@@ -5,6 +5,20 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.2.0] - 2026-02-28
+
+### 新增
+
+- Desktop 设置面板用户可自配置 AI（API Key / Base URL / Model / Temperature / Proxy）
+- Desktop "测试 AI 连接"按钮，验证 API 可用性
+- GitHub Actions 自动构建 macOS dmg（Intel + Apple Silicon）并发布 Release
+- Website 新增"下载 macOS 版"按钮，指向 GitHub Releases
+
+### 优化
+
+- `.env.local` 移出打包，用户配置改为 SQLite 持久化
+- 代理配置支持热更新
+
 ## [2.1.0] - 2026-02-28
 
 ### 新增
