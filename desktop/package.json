@@ -19,11 +19,13 @@
   "build": {
     "appId": "com.oraclex.nofomo",
     "productName": "Oracle-X-NoFOMO",
+    "npmRebuild": false,
     "directories": {
       "output": "release"
     },
     "mac": {
       "category": "public.app-category.finance",
+      "icon": "icons/icon.png",
       "target": [
         "dmg"
       ]
