@@ -1,45 +1,37 @@
 # Dependencies
 node_modules/
-/.pnp
-.pnp.js
 
-# Testing
-/coverage
+# Testing & Debug
 /tests/
 /test_data/
 /test-api.js
-*.log
+/coverage
+/scripts/
+jest.config.cjs
 
-# Next.js
+# Next.js build
 /.next/
 /out/
-.next
-out
-build
-dist
-
-# Production
 /build
+/dist
 
-# Misc
-.DS_Store
-*.pem
+# Desktop build
+desktop/release/
+desktop/node_modules/
+desktop/*.xlsx
 
-# Debug
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# Local env files
+# Environment (contains API keys)
 .env
 .env*.local
 desktop/.env.local
 
-# Vercel
-.vercel
-
-# TypeScript
+# TypeScript cache
 *.tsbuildinfo
 next-env.d.ts
 
@@ -49,18 +41,13 @@ next-env.d.ts
 *.swp
 *.swo
 *~
-.project
-.classpath
-.settings/
-.loadpath
 
 # OS
+.DS_Store
 Thumbs.db
-ehthumbs.db
 Desktop.ini
-$RECYCLE.BIN/
 
-# Temporary files
+# Temporary
 *.tmp
 *.temp
 .cache/
@@ -68,24 +55,14 @@ $RECYCLE.BIN/
 # Backup files
 *.backup
 
-# Local runtime data
+# Runtime data
 /data/
 
-# Desktop build output
-desktop/release/
-desktop/node_modules/
-
-# Scripts (dev/debug only)
-/scripts/
-
-# Demo / draft files
+# Draft / internal docs
 /demo.md
+/GIT_SUBMIT_GUIDE.md
+/CONTRIBUTING.md
+docs/
 
 # Test mock pages
 /public/mock-binance.html
-
-# Temp data files
-desktop/*.xlsx
-
-#文档
-/docs

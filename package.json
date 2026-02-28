@@ -11,14 +11,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
-    "test": "node tests/index.js",
-    "simulate:nofomo": "node scripts/simulate-nofomo.js",
-    "smoke:health": "node scripts/smoke-health.js",
     "desktop:install": "cd desktop && npm install",
     "desktop:dev": "cd desktop && npm run dev",
-    "desktop:build": "cd desktop && npm run build",
-    "test:api": "node tests/api.js",
-    "test:all": "node tests/index.js && node tests/api.js"
+    "desktop:build": "cd desktop && npm run build"
   },
   "dependencies": {
     "lightweight-charts": "^5.1.0",
