@@ -20,10 +20,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Generate app icon from logo
-        run: |
-          sips -s format png -z 512 512 extension/icons/logo.jpg --out desktop/icons/icon.png
-
       - name: Install dependencies
         working-directory: desktop
         run: npm ci
