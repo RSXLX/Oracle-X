@@ -514,6 +514,202 @@ async function loadHistoryBatch() {
 
 document.getElementById('loadHistoryBtn')?.addEventListener('click', loadHistoryBatch);
 
+// ==================== 截图分析核心逻辑 ====================
+let analysisCount = 0;
+let riskCount = 0;
+
+// ==================== 堆叠通知系统 ====================
+function pushNotification(title, body, type = 'info', duration = 5000) {
+  const stack = document.getElementById('notificationStack');
+  const item = document.createElement('div');
+  item.className = `notification-item notif-${type}`;
+  const time = new Date().toLocaleTimeString();
+  item.innerHTML = `
+    <span class="notif-time">${time}</span>
+    <div class="notif-title">${title}</div>
+    <div class="notif-body">${body}</div>`;
+  item.addEventListener('click', () => {
+    item.classList.add('fade-out');
+    setTimeout(() => item.remove(), 300);
+  });
+  stack.appendChild(item);
+  while (stack.children.length > 5) stack.firstChild.remove();
+  setTimeout(() => {
+    if (item.parentNode) {
+      item.classList.add('fade-out');
+      setTimeout(() => item.remove(), 300);
+    }
+  }, duration);
+}
+
+// ==================== 侧边栏面板 ====================
+function openSidePanel() {
+  document.getElementById('sidePanelOverlay').classList.add('open');
+  document.getElementById('sidePanel').classList.add('open');
+}
+function closeSidePanel() {
+  document.getElementById('sidePanelOverlay').classList.remove('open');
+  document.getElementById('sidePanel').classList.remove('open');
+}
+document.getElementById('sidePanelOverlay')?.addEventListener('click', closeSidePanel);
+document.getElementById('sidePanelClose')?.addEventListener('click', closeSidePanel);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSidePanel(); });
+
+function showSidePanelLoading() {
+  document.getElementById('sidePanelTitle').textContent = '🔍 AI 正在分析...';
+  document.getElementById('sidePanelBody').innerHTML = `
+    <div style="text-align:center;padding:40px 0;">
+      <div class="loading">截图已捕获，AI 正在识别交易界面...</div>
+      <p style="color:#6e7681;font-size:12px;margin-top:16px;">分析通常需要 3-5 秒</p>
+    </div>`;
+  document.getElementById('sidePanelActions').style.display = 'none';
+  openSidePanel();
+}
+
+function renderSidePanelResult(result) {
+  const action = result?.action || 'allow';
+  const risk = result?.riskLevel || 'low';
+  const platform = result?.platform || '未识别';
+  const buttons = result?.buttons || [];
+  const hasTrade = result?.hasTradingButtons || false;
+  const summary = result?.summary || '';
+
+  const rc = {
+    high: { bg: '#3a1a1a', border: '#dc2626', text: '#f87171', emoji: '🔴', label: '高风险' },
+    medium: { bg: '#3a2a1a', border: '#d97706', text: '#fbbf24', emoji: '🟡', label: '中风险' },
+    low: { bg: '#1a3a2a', border: '#16a34a', text: '#4ade80', emoji: '🟢', label: '低风险' },
+  }[risk] || { bg: '#1a3a2a', border: '#16a34a', text: '#4ade80', emoji: '🟢', label: '低风险' };
+
+  document.getElementById('sidePanelTitle').textContent = `${rc.emoji} 分析结果 — ${rc.label}`;
+  document.getElementById('sidePanelBody').innerHTML = `
+    <div class="analysis-detail-card" style="border:1px solid ${rc.border};background:${rc.bg};">
+      <div class="detail-grid">
+        <div class="detail-item"><span class="detail-label">平台识别</span><span class="detail-value">${platform}</span></div>
+        <div class="detail-item"><span class="detail-label">风险等级</span><span class="detail-value" style="color:${rc.text};">${rc.emoji} ${rc.label}</span></div>
+        <div class="detail-item"><span class="detail-label">交易按钮</span><span class="detail-value">${hasTrade ? '✅ 已检测到' : '❌ 未检测到'}</span></div>
+        <div class="detail-item"><span class="detail-label">建议操作</span><span class="detail-value" style="color:${rc.text};">${action === 'block' ? '🛑 建议阻止' : action === 'warn' ? '⚠️ 需注意' : '✅ 可放行'}</span></div>
+      </div>
+      ${buttons.length ? `<div style="margin-bottom:12px;"><span class="detail-label">检测到的交易按钮</span><div class="analysis-buttons-list" style="margin-top:6px;">${buttons.map(b => `<span class="analysis-button-tag">${b}</span>`).join('')}</div></div>` : ''}
+    </div>
+    ${summary ? `<div class="card" style="margin:0;"><h2 style="font-size:14px;">💡 AI 建议</h2><p style="color:#8b949e;font-size:13px;line-height:1.6;">${summary}</p></div>` : ''}
+    <div class="card" style="margin-top:12px;">
+      <h2 style="font-size:14px;">📋 分析详情</h2>
+      <div style="font-size:12px;color:#6e7681;">
+        <div style="margin-bottom:4px;">时间：${new Date().toLocaleString()}</div>
+        <div style="margin-bottom:4px;">分析引擎：MiniMax-M2.5-highspeed</div>
+        <div>截图已自动删除（隐私保护）</div>
+      </div>
+    </div>`;
+  document.getElementById('sidePanelActions').style.display = (action === 'block' || action === 'warn') ? 'flex' : 'none';
+  openSidePanel();
+}
+
+// 侧边栏操作按钮
+document.getElementById('sidePanelBlock')?.addEventListener('click', () => {
+  pushNotification('🛑 交易已取消', '您选择了取消本次交易操作', 'warning');
+  closeSidePanel();
+});
+document.getElementById('sidePanelAllow')?.addEventListener('click', () => {
+  pushNotification('✅ 交易已放行', '请注意风险管理', 'success');
+  closeSidePanel();
+});
+
+// ==================== 截图按钮 ====================
+document.getElementById('screenshotBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('screenshotBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 截图中...';
+  showSidePanelLoading();
+  pushNotification('📸 截图中', '正在截取屏幕...', 'info', 3000);
+
+  try {
+    const result = await window.oracleDesktop.takeScreenshot();
+    if (!result) {
+      closeSidePanel();
+      pushNotification('❌ 截图失败', '请检查屏幕录制权限', 'error');
+    }
+  } catch (err) {
+    closeSidePanel();
+    pushNotification('❌ 错误', err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📸 立即截图分析';
+  }
+});
+
+// 快捷键截图也打开侧边栏
+if (window.oracleDesktop.onScreenshotCaptured) {
+  window.oracleDesktop.onScreenshotCaptured(() => {
+    showSidePanelLoading();
+    pushNotification('📸 截图成功', 'AI 正在分析中...', 'info', 4000);
+  });
+}
+
+// 分析结果 → 侧边栏 + 通知 + 记录
+if (window.oracleDesktop.onScreenshotResult) {
+  window.oracleDesktop.onScreenshotResult((result) => {
+    renderSidePanelResult(result);
+    addAnalysisLog(result);
+    updateStats(result);
+    const risk = result?.riskLevel || 'low';
+    const label = risk === 'high' ? '高风险' : risk === 'medium' ? '中风险' : '低风险';
+    const emoji = risk === 'high' ? '🔴' : risk === 'medium' ? '🟡' : '🟢';
+    const type = risk === 'high' ? 'error' : risk === 'medium' ? 'warning' : 'success';
+    pushNotification(`${emoji} ${label} · ${result?.platform || '未识别'}`,
+      result?.action === 'block' ? '建议取消本次交易' : '当前操作安全', type, 6000);
+  });
+}
+
+// 分析错误
+if (window.oracleDesktop.onScreenshotError) {
+  window.oracleDesktop.onScreenshotError((data) => {
+    closeSidePanel();
+    pushNotification('❌ 分析失败', data?.error || '未知错误', 'error');
+  });
+}
+
+// ==================== 分析记录 ====================
+function addAnalysisLog(result) {
+  const logEl = document.getElementById('screenshotLog');
+  if (logEl.querySelector('.muted')) logEl.innerHTML = '';
+
+  const risk = result?.riskLevel || 'low';
+  const emoji = risk === 'high' ? '🔴' : risk === 'medium' ? '🟡' : '🟢';
+  const label = risk === 'high' ? '高风险' : risk === 'medium' ? '中风险' : '低风险';
+  const platform = result?.platform || '未识别';
+  const time = new Date().toLocaleTimeString();
+  const action = result?.action || 'allow';
+
+  const entry = document.createElement('div');
+  entry.style.cssText = 'padding:8px 12px;margin-bottom:6px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);font-size:13px;cursor:pointer;transition:background 0.2s;';
+  entry.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span>${emoji} <strong>${label}</strong> · ${platform}</span>
+      <span style="color:#8b949e;font-size:11px;">${time}</span>
+    </div>
+    ${result?.buttons?.length ? `<div style="color:#8b949e;font-size:11px;margin-top:4px;">按钮: ${result.buttons.join(', ')}</div>` : ''}
+    <div style="color:${action === 'block' ? '#f87171' : '#8b949e'};font-size:11px;margin-top:2px;">→ ${action === 'block' ? '已阻止' : action === 'warn' ? '已警告' : '已放行'}</div>`;
+  entry.addEventListener('click', () => renderSidePanelResult(result));
+  entry.addEventListener('mouseenter', () => entry.style.background = 'rgba(255,255,255,0.08)');
+  entry.addEventListener('mouseleave', () => entry.style.background = 'rgba(255,255,255,0.04)');
+  logEl.prepend(entry);
+}
+
+// ==================== 统计更新 ====================
+function updateStats(result) {
+  analysisCount++;
+  const el1 = document.getElementById('todayAnalyses');
+  if (el1) el1.textContent = analysisCount;
+  if (result?.action === 'block' || result?.action === 'warn') {
+    riskCount++;
+    const el2 = document.getElementById('todayBlock');
+    if (el2) el2.textContent = riskCount;
+  }
+  const rate = analysisCount > 0 ? Math.round((riskCount / analysisCount) * 100) : 0;
+  const el3 = document.getElementById('mitigationRate');
+  if (el3) el3.textContent = rate + '%';
+}
+
 // ==================== 初始化 ====================
 (async () => {
   await loadSettings();
@@ -521,3 +717,4 @@ document.getElementById('loadHistoryBtn')?.addEventListener('click', loadHistory
   await refreshLogs();
   await loadImportHistory();
 })();
+

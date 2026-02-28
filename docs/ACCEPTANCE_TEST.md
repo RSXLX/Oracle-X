@@ -1,239 +1,261 @@
-# Oracle-X 操作验收文档
+# Oracle-X 全产品验收文档
 
-> **验收日期**：2026-02-27
-> **验收范围**：批次 1-5 全部变更（代理环境变量化、Extension 设置页、3 个新 API、文档对齐、Desktop 验证）
-
----
-
-## 一、环境检查
-
-### 1.1 Node.js 环境
-```bash
-node --version   # 期望：v20+ 
-npm --version    # 期望：v9+
-```
-
-### 1.2 Web App 依赖
-```bash
-cd /Users/hmwz/AI项目/Oracle-X
-ls node_modules/.package-lock.json  # 应存在
-```
-
-### 1.3 Desktop 依赖
-```bash
-ls desktop/node_modules/.package-lock.json  # 应存在
-```
-
-### 1.4 环境变量
-```bash
-cat .env.local
-```
-- [ ] `STEP_API_KEY` 已配置
-- [ ] `AI_BASE_URL` 已配置
-- [ ] `AI_MODEL` 已配置
-- [ ] `HTTP_PROXY` 已配置（如需代理），或留空（直连 Binance）
+> 版本：v2.1 | 日期：2026-02-28 | 覆盖：Web App + Chrome Extension + Desktop
 
 ---
 
-## 二、代码质量门禁
+## 一、前置条件
 
-```bash
-# 在项目根目录执行
-npm run type-check   # TypeScript 类型检查
-npm run build        # 构建
-npm run lint         # ESLint
-npm test             # Jest 单元测试
-```
-
-- [ ] `type-check` 通过（零错误）
-- [ ] `build` 通过（应看到 12 个 API 路由）
-- [ ] `lint` 无阻断错误
-- [ ] `test` 通过
+- [ ] Web App 运行中（`npm run dev`，访问 `http://localhost:3000`）
+- [ ] `.env.local` 已配置 `STEP_API_KEY`、`AI_BASE_URL`、`AI_MODEL`
+- [ ] Chrome 浏览器 120+ 版本
 
 ---
 
-## 三、Web App 验收
+## 二、Web App 验收
 
-### 3.1 启动服务
-```bash
-npm run dev
-# 期望：http://localhost:3000 启动
-```
+### 2.1 首页加载
+1. 访问 `http://localhost:3000`
 
-### 3.2 主页面功能
+**验收标准：**
+- [ ] 首页正常渲染，无白屏
+- [ ] K 线图区域正常显示
 
-打开浏览器访问 `http://localhost:3000`：
+### 2.2 API 健康检查
+1. 访问 `http://localhost:3000/api/health`
 
-- [ ] K 线图正常渲染
-- [ ] 可切换时间周期（1m / 5m / 15m / 1h / 4h / 1d）
-- [ ] 可切换交易对（ETH/USDT、BTC/USDT、SOL/USDT）
-- [ ] 技术指标面板显示 RSI、MACD、布林带、ATR
-- [ ] Twitter 情绪面板加载（有 RapidAPI Key 时）
-
-### 3.3 AI 分析功能
-
-- [ ] 点击 LONG 或 SHORT → 弹出分析弹窗
-- [ ] 看到流式文本逐字输出
-- [ ] 分析完成后出现结论 Badge（🟢 / 🟡 / 🔴）
-
-### 3.4 Decision Log 页面
-
-打开 `http://localhost:3000/decision-log`：
-
-- [ ] 页面正常渲染
-- [ ] 有数据时可筛选（交易对、动作）
-- [ ] 导出 JSON 按钮可点击
-- [ ] 导出 CSV 按钮可点击
-- [ ] 显示复盘指标（拦截率、风险化解率）
+**验收标准：**
+- [ ] 返回 JSON 健康状态
 
 ---
 
-## 四、新增 API 验收
+## 三、Chrome Extension 验收
 
-> 确保 `npm run dev` 正在运行
+### 3.1 加载 Extension
+1. `chrome://extensions/` → 开发者模式 → 加载已解压的扩展程序 → `extension/`
 
-### 4.1 GET /api/market
+**验收标准：**
+- [ ] Oracle-X 出现在扩展列表
+- [ ] 无红色报错
 
-```bash
-curl -s "http://localhost:3000/api/market?symbol=BTCUSDT" | head -c 500
-```
+### 3.2 设置页面
+1. Oracle-X → 详情 → 扩展程序选项
 
-- [ ] 返回 JSON，包含 `ticker`、`indicators`、`sentiment` 字段
-- [ ] `ticker.price` 有值
+**验收标准：**
+- [ ] 可见「🛡️ 风险控制」和「🎯 智能拦截」配置区块
+- [ ] 设置保存后刷新仍保留
 
-### 4.2 POST /api/decision
+### 3.3 平台检测
+1. 访问 `http://localhost:3000/mock-binance.html`
+2. `F12` 打开 Console
 
-```bash
-curl -s -X POST http://localhost:3000/api/decision \
-  -H "Content-Type: application/json" \
-  -d '{"symbol":"BTCUSDT","direction":"LONG","marketData":{"price":"50000","change24h":"2.5"}}' | python3 -m json.tool
-```
+**验收标准：**
+- [ ] `[Oracle-X] Detected platform: Mock Exchange`
+- [ ] `[Oracle-X] Smart Intercept loaded for Mock Exchange`
 
-- [ ] 返回 `decision` 对象（含 `action`、`impulseScore`、`reasons`）
+### 3.4 低风险拦截（1x 杠杆）
+1. 点击「1x 低风险」→ 点击「买入 BTC」
 
-### 4.3 GET /api/decision-log
+**验收标准：**
+- [ ] 绿色气泡（✅ 风险较低 + 分数）
+- [ ] 气泡 2 秒自动消失
+- [ ] 交易自动放行
 
-```bash
-curl -s "http://localhost:3000/api/decision-log?limit=5" | python3 -m json.tool
-```
+### 3.5 气泡查看详情
+1. 重复 3.4，在气泡消失前点击「查看详情 ›」
 
-- [ ] 返回 `items` 数组
+**验收标准：**
+- [ ] 弹出极简拦截弹窗（非 Side Panel）
+- [ ] 显示交易对 + 评分 + 操作按钮
 
-### 4.4 POST /api/trade/history
+### 3.6 中风险拦截（10x 杠杆）
+1. 点击「10x 中风险」→ 点击「买入 BTC」
 
-```bash
-curl -s -X POST http://localhost:3000/api/trade/history \
-  -H "Content-Type: application/json" \
-  -d '{"csv":"symbol,side,price,quantity,time\nBTCUSDT,BUY,50000,0.1,2026-01-01\nETHUSDT,SELL,3000,1,2026-01-02\nBTCUSDT,BUY,51000,0.2,2026-01-03"}' | python3 -m json.tool
-```
+**验收标准：**
+- [ ] **首次点击即弹出拦截弹窗**
+- [ ] 评分约 23 分，⚠️ 中风险
+- [ ] 操作按钮立即可用（无需等 AI）
+- [ ] AI 分析在下方可折叠区域后台加载
+- [ ] 键盘：Enter=继续，Esc=取消
 
-- [ ] 返回 `stats`（含 `totalTrades`、`buyCount`、`sellCount`）
-- [ ] 返回 `topSymbols`、`style`、`concentration`
+### 3.7 高风险拦截（50x 杠杆）
+1. 点击「50x 高风险」→ 点击「买入 BTC」
 
-### 4.5 POST /api/data/refine
+**验收标准：**
+- [ ] 首次点击即弹出拦截弹窗
+- [ ] 评分约 40 分
+- [ ] 杠杆信息高亮（黄色 ⚠️ 50x 杠杆）
 
-```bash
-curl -s -X POST http://localhost:3000/api/data/refine \
-  -H "Content-Type: application/json" \
-  -d '{"symbol":"BTCUSDT"}' | head -c 500
-```
+### 3.8 用户决策
 
-- [ ] 返回 JSON，包含 `ticker`、`indicators`、`klineSummary`、`sentiment`、`noFomo`
+**取消交易：**
+1. 触发拦截后点击「❌ 取消」（或 Esc）
 
-### 4.6 GET /api/health
+- [ ] 显示「❌ 交易已取消」
+- [ ] 2 秒自动关窗
+- [ ] 日志区无"买入操作执行"
 
-```bash
-curl -s "http://localhost:3000/api/health" | python3 -m json.tool
-```
+**继续交易：**
+1. 触发拦截后点击「✅ 继续交易」（或 Enter）
 
-- [ ] 返回 `status`（healthy 或 degraded）
-- [ ] `checks.aiKey.ok` 为 true
+- [ ] 显示「✅ 已放行」
+- [ ] 2 秒自动关窗
+- [ ] 日志区出现"买入操作执行"
 
-### 4.7 GET /api/config-status
+### 3.9 禁用测试
+1. 设置页 → 关闭「启用智能拦截分析」→ 保存 → 刷新
 
-```bash
-curl -s "http://localhost:3000/api/config-status" | python3 -m json.tool
-```
-
-- [ ] `aiApiKeyConfigured` 为 true
-- [ ] `aiBaseUrlConfigured` 为 true
-
----
-
-## 五、Chrome Extension 验收
-
-### 5.1 加载扩展
-
-1. 打开 `chrome://extensions/`
-2. 开启「开发者模式」
-3. 点击「加载已解压的扩展程序」→ 选择 `extension/` 目录
-
-- [ ] 扩展加载成功，无报错
-- [ ] 工具栏出现 Oracle-X 图标
-
-### 5.2 设置页（新增功能）
-
-1. 右键 Oracle-X 图标 → 点击「选项」
-
-- [ ] 设置页打开，暗色主题
-- [ ] 可修改 API 基础地址
-- [ ] 可选择风险档位（保守 / 平衡 / 积极）
-- [ ] 可调整冷静期（5-120 秒）
-- [ ] NoFOMO 开关可切换
-- [ ] 平台开关可勾选/取消
-- [ ] 点击「保存设置」→ 出现绿色提示
-- [ ] 刷新页面后设置仍保留
-
-### 5.3 Side Panel
-
-1. 点击 Oracle-X 图标
-
-- [ ] Side Panel 打开
+**验收标准：**
+- [ ] Console: `[Oracle-X] Smart Intercept is disabled`
+- [ ] 按钮点击不被拦截
 
 ---
 
-## 六、Desktop App 验收
+## 四、Desktop 桌面端验收
 
-### 6.1 启动
-
+### 4.1 安装与启动
 ```bash
 cd /Users/hmwz/AI项目/Oracle-X/desktop
+npm install         # 首次需要
 npm run dev
 ```
 
-- [ ] Electron 窗口出现
-- [ ] macOS 菜单栏出现系统托盘图标
-- [ ] 控制台显示 `[Oracle-X] Started`
+**验收标准：**
+- [ ] 应用窗口正常打开（深色主题）
+- [ ] Console: `[Database] SQLite ready: .../oraclex.db`
+- [ ] Console: `[Oracle-X] Database ready`
+- [ ] **无 MySQL 错误弹窗**
+- [ ] 系统托盘出现 Oracle-X 图标
 
-### 6.2 功能检查
+### 4.2 数据库零配置
+1. 打开 Finder → `~/Library/Application Support/oracle-x-desktop/`
 
-- [ ] 设置 Tab：可修改 API URL、风险档位
-- [ ] 监控 Tab：显示监控状态
-- [ ] CSV Tab：可导入 CSV 文件（使用 `test_data/binance_test.csv` 测试）
-- [ ] 钱包 Tab：可添加钱包地址
+**验收标准：**
+- [ ] 存在 `oraclex.db` 文件
+- [ ] 文件大小 > 0
+
+### 4.3 设置持久化
+1. 在应用中修改设置 → 关闭应用 → 重新 `npm run dev`
+
+**验收标准：**
+- [ ] 设置保留不丢失
+
+### 4.4 截图按钮
+1. 在监控面板点击「📸 立即截图分析」按钮
+
+**验收标准：**
+- [ ] 按钮变为「⏳ 截图中...」（禁用状态）
+- [ ] 右下角弹出蓝色通知「📸 截图中 - 正在截取屏幕...」
+- [ ] **右侧弹出侧边栏面板**，显示加载动画
+
+### 4.5 侧边栏分析结果
+1. 截图完成后等待 AI 分析（约 3-5 秒）
+
+**验收标准：**
+- [ ] 侧边栏标题更新为「🟢 分析结果 — 低风险」（或对应风险色）
+- [ ] 显示 4 格信息：平台识别、风险等级、交易按钮、建议操作
+- [ ] 高/中风险时底部显示「🛑 取消交易」和「✅ 继续交易」按钮
+- [ ] 底部显示分析详情（时间、引擎、隐私保护提示）
+- [ ] 点击遮罩层或 ✕ 或 ESC → 关闭侧边栏
+
+### 4.6 堆叠通知
+1. 连续按两次 `Cmd+Shift+S`
+
+**验收标准：**
+- [ ] 右下角出现多条通知堆叠显示
+- [ ] 通知 5 秒自动消失
+- [ ] 点击通知可立即关闭
+- [ ] 最多同时显示 5 条
+
+### 4.7 分析记录
+1. 触发数次截图分析后查看「📋 分析记录」区域
+
+**验收标准：**
+- [ ] 每次分析自动追加记录（风险等级 + 平台 + 时间 + 操作）
+- [ ] 点击记录条目 → 重新打开侧边栏查看该次分析详情
+- [ ] hover 时背景高亮
+
+### 4.8 统计更新
+1. 查看「📊 今日统计」区域
+
+**验收标准：**
+- [ ] 「截图分析」计数正确递增
+- [ ] 「风险检测」仅在 block/warn 时递增
+- [ ] 「化解率」百分比正确
+
+### 4.9 快捷键截图
+1. 按 `Cmd+Shift+S`（快捷键路径）
+
+**验收标准：**
+- [ ] 与按钮路径一致：侧边栏打开 + 通知弹出 + 分析结果展示
+
+### 4.10 权限引导（首次未授权）
+1. 在未授权屏幕录制的环境下截图
+
+**验收标准：**
+- [ ] 弹出权限引导对话框，包含「🔒 隐私保护承诺」
+- [ ] 点击「去系统设置授权」→ 跳转 macOS 系统设置
+
+### 4.11 全局快捷键
+- [ ] `Cmd+Shift+O` → 显示/隐藏主窗口
+
+### 4.12 CSV / XLSX 导入
+1. 使用导入功能选择 CSV/XLSX 文件
+
+**验收标准：**
+- [ ] 文件解析成功
+- [ ] 数据正确存储到 SQLite
 
 ---
 
-## 七、文档验收
+## 五、评分阈值参考
 
-- [ ] `README.md` — 包含 Web App、Desktop、Extension 三端说明
-- [ ] `docs/EXTENSION_USAGE.md` — Extension 安装、配置、使用流程完整
-- [ ] `docs/02_开发计划/EXECUTION_PLAN.md` — 任务状态已更新
-- [ ] `.gitignore` — 包含 `*.backup` 规则
+### 杠杆评分
+| 杠杆 | 分数 |
+|------|------|
+| 1x | 0 |
+| 3x | 5 |
+| 5x | 12 |
+| 10x | 18 |
+| 20x | 25 |
+| 50x+ | 35 |
+
+### 灵敏度阈值（balanced）
+| 风险级别 | 分数范围 | 处理方式 |
+|----------|----------|----------|
+| 低风险 | ≤ 20 | 气泡通知 + 自动放行 |
+| 中风险 | 21-45 | 弹出拦截窗口 |
+| 高风险 | > 45 | 弹出拦截窗口（强烈警告）|
 
 ---
 
-## 八、验收签字
+## 六、验收结论
 
-| 检查大类 | 检查项数 | 通过数 | 备注 |
-|----------|---------|--------|------|
-| 环境检查 | 4 | | |
-| 代码质量 | 4 | | |
-| Web App | 9 | | |
-| 新增 API | 7 | | |
-| Extension | 10 | | |
-| Desktop | 5 | | |
-| 文档 | 4 | | |
-| **合计** | **43** | | |
+| 模块 | 检查项 | 通过 |
+|------|--------|------|
+| Web App | 首页加载 | ☐ |
+| Web App | API 健康检查 | ☐ |
+| Extension | 加载无报错 | ☐ |
+| Extension | 设置页面 | ☐ |
+| Extension | 平台检测 | ☐ |
+| Extension | 低风险气泡 | ☐ |
+| Extension | 气泡查看详情 | ☐ |
+| Extension | 中风险首次弹窗 | ☐ |
+| Extension | 高风险首次弹窗 | ☐ |
+| Extension | 用户决策 | ☐ |
+| Extension | 禁用开关 | ☐ |
+| Desktop | 零配置启动 | ☐ |
+| Desktop | SQLite 自动创建 | ☐ |
+| Desktop | 设置持久化 | ☐ |
+| Desktop | 截图按钮 → 侧边栏 | ☐ |
+| Desktop | 侧边栏分析结果 | ☐ |
+| Desktop | 堆叠通知 | ☐ |
+| Desktop | 分析记录回看 | ☐ |
+| Desktop | 统计更新 | ☐ |
+| Desktop | 快捷键截图 | ☐ |
+| Desktop | 权限引导 | ☐ |
+| Desktop | 全局快捷键 | ☐ |
 
-验收人签字：________________  日期：________________
+**验收人**：________________  **日期**：________________
+
+**验收结果**：☐ 通过  ☐ 不通过（附详细问题描述）

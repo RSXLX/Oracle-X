@@ -20,6 +20,12 @@ const DEFAULT_SETTINGS = {
     coolingTime: 20,
     enableNoFomoBlock: true,
     enabledPlatforms: PLATFORMS.map(p => p.id),
+    // Smart Intercept
+    enableSmartIntercept: true,
+    interceptSensitivity: 'balanced',
+    lowRiskNotify: 'bubble',
+    cacheExpiry: 300,
+    apiTimeout: 5,
 };
 
 // === UI 初始化 ===
@@ -71,6 +77,13 @@ function fillForm(settings) {
     document.getElementById('coolingTime').value = settings.coolingTime || 20;
     document.getElementById('enableNoFomoBlock').checked = settings.enableNoFomoBlock !== false;
 
+    // Smart Intercept
+    document.getElementById('enableSmartIntercept').checked = settings.enableSmartIntercept !== false;
+    document.getElementById('interceptSensitivity').value = settings.interceptSensitivity || 'balanced';
+    document.getElementById('lowRiskNotify').value = settings.lowRiskNotify || 'bubble';
+    document.getElementById('cacheExpiry').value = settings.cacheExpiry || 300;
+    document.getElementById('apiTimeout').value = settings.apiTimeout || 5;
+
     const enabled = settings.enabledPlatforms || PLATFORMS.map(p => p.id);
     document.querySelectorAll('[data-platform]').forEach((cb) => {
         cb.checked = enabled.includes(cb.dataset.platform);
@@ -89,6 +102,12 @@ function collectForm() {
         coolingTime: Math.max(5, Math.min(120, parseInt(document.getElementById('coolingTime').value, 10) || 20)),
         enableNoFomoBlock: document.getElementById('enableNoFomoBlock').checked,
         enabledPlatforms,
+        // Smart Intercept
+        enableSmartIntercept: document.getElementById('enableSmartIntercept').checked,
+        interceptSensitivity: document.getElementById('interceptSensitivity').value,
+        lowRiskNotify: document.getElementById('lowRiskNotify').value,
+        cacheExpiry: Math.max(60, Math.min(600, parseInt(document.getElementById('cacheExpiry').value, 10) || 300)),
+        apiTimeout: Math.max(3, Math.min(15, parseInt(document.getElementById('apiTimeout').value, 10) || 5)),
     };
 }
 

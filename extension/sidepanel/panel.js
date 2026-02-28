@@ -13,6 +13,9 @@ const state = {
   noFomoCountdown: null,
   noFomoRemaining: 0,
   pendingAnalyzePayload: null,
+  // Smart Intercept
+  interceptData: null,       // { tradeContext, scoreResult, tabId }
+  isInterceptMode: false,
 };
 
 // DOM 元素
@@ -58,17 +61,29 @@ function init() {
   elements.analyzeOnlyBtn.addEventListener('click', () => handleIntentSelect('ANALYZE'));
   elements.noFomoProceedBtn.addEventListener('click', continueToAnalysis);
   elements.noFomoCancelBtn.addEventListener('click', cancelNoFomoFlow);
-  
+
   // 监听来自 Service Worker 的消息
   chrome.runtime.onMessage.addListener(handleMessage);
 
   checkConfigStatus();
-  
-  // 请求当前截图（如果已存在）
-  chrome.runtime.sendMessage({ type: 'GET_SCREENSHOT' }, (response) => {
-    if (response && response.screenshot) {
-      state.screenshot = response.screenshot;
+
+  // 优先检查拦截模式（Smart Intercept）
+  chrome.storage.session.get('oraclex_pending_intercept', (result) => {
+    const pending = result?.oraclex_pending_intercept;
+    if (pending && pending.timestamp && (Date.now() - pending.timestamp < 15000)) {
+      console.log('[Oracle-X Panel] Intercept mode activated');
+      chrome.storage.session.remove('oraclex_pending_intercept');
+      state.interceptData = pending;
+      state.isInterceptMode = true;
+      renderInterceptedTrade(pending);
+      return; // 拦截模式：不请求截图
     }
+    // 非拦截模式：走默认截图流程
+    chrome.runtime.sendMessage({ type: 'GET_SCREENSHOT' }, (response) => {
+      if (response && response.screenshot) {
+        state.screenshot = response.screenshot;
+      }
+    });
   });
 }
 
@@ -98,19 +113,25 @@ async function checkConfigStatus() {
  * 处理来自 Service Worker 的消息
  */
 function handleMessage(message) {
+  // 拦截模式下忽略截图识别相关消息
+  if (state.isInterceptMode && ['SCREENSHOT_CAPTURED', 'RECOGNIZE_COMPLETE', 'RECOGNIZE_ERROR'].includes(message.type)) {
+    console.log('[Oracle-X Panel] Intercept mode, skipping:', message.type);
+    return;
+  }
+
   switch (message.type) {
     case 'SCREENSHOT_CAPTURED':
       state.screenshot = message.data.screenshot;
       state.status = 'recognizing';
       renderRecognizing();
       break;
-      
+
     case 'RECOGNIZE_COMPLETE':
       state.recognizeResult = message.data;
       state.status = 'recognized';
       renderRecognizeResult();
       break;
-      
+
     case 'RECOGNIZE_ERROR':
       state.status = 'error';
       renderRecognizeError(message.data.error, {
@@ -118,25 +139,32 @@ function handleMessage(message) {
         requestId: message.data.requestId
       });
       break;
-      
+
     case 'ANALYSIS_STREAM':
       state.analysisText = message.data.fullText;
       renderAnalysisStream();
       break;
-      
+
     case 'ANALYSIS_COMPLETE':
       state.analysisText = message.data.fullText;
       state.status = 'complete';
       hideStatus();
       renderAnalysisComplete();
       break;
-      
+
     case 'ANALYSIS_ERROR':
       state.status = 'error';
       renderAnalysisError(message.data.error, {
         code: message.data.code,
         requestId: message.data.requestId
       });
+      break;
+
+    // ========== Smart Intercept ==========
+    case 'TRADE_INTERCEPTED':
+      state.interceptData = message.data;
+      state.isInterceptMode = true;
+      renderInterceptedTrade(message.data);
       break;
   }
 }
@@ -165,7 +193,7 @@ function renderRecognizing() {
 function renderRecognizeResult() {
   updateStageIndicator('recognized', `已识别: ${state.recognizeResult?.platform || 'Unknown'} ${state.recognizeResult?.pair || ''}`);
   const result = state.recognizeResult;
-  
+
   if (!result || (!result.platform && !result.pair)) {
     elements.recognizeContent.innerHTML = `
       <div class="error-state">
@@ -175,10 +203,10 @@ function renderRecognizeResult() {
     `;
     return;
   }
-  
+
   const platformIcon = getPlatformIcon(result.platform);
   const tradeTypeLabel = getTradeTypeLabel(result.trade_type);
-  
+
   elements.recognizeContent.innerHTML = `
     <div class="recognize-result">
       <div class="platform-badge">
@@ -189,7 +217,7 @@ function renderRecognizeResult() {
       ${tradeTypeLabel ? `<div class="trade-type">${tradeTypeLabel}</div>` : ''}
     </div>
   `;
-  
+
   // 显示意图选择
   elements.intentSection.classList.remove('hidden');
 }
@@ -372,7 +400,7 @@ function renderAnalysisStream() {
   updateStageIndicator('analyzing', 'AI 分析中...');
   elements.analysisContent.innerHTML = state.analysisText + '<span class="cursor-blink">▊</span>';
   elements.analysisContent.scrollTop = elements.analysisContent.scrollHeight;
-  
+
   // 更新分数
   updateScoreFromText(state.analysisText);
 }
@@ -383,10 +411,10 @@ function renderAnalysisStream() {
 function renderAnalysisComplete() {
   hideStageIndicator();
   elements.analysisContent.innerHTML = state.analysisText;
-  
+
   // 更新最终分数
   updateScoreFromText(state.analysisText);
-  
+
   // 显示结论
   renderConclusion();
 }
@@ -411,9 +439,9 @@ function updateScoreFromText(text) {
   // 尝试从文本中提取评分
   let score = 50; // 默认分数
   let summary = '分析中...';
-  
+
   const lowerText = text.toLowerCase();
-  
+
   if (lowerText.includes('🟢') || lowerText.includes('建议执行')) {
     score = 75;
     summary = '当前市场环境有利';
@@ -424,13 +452,13 @@ function updateScoreFromText(text) {
     score = 50;
     summary = '建议谨慎观望';
   }
-  
+
   // 更新仪表盘
   const arcLength = (score / 100) * 126; // 126 是半圆弧长
   elements.scoreArc.style.strokeDasharray = `${arcLength} 126`;
   elements.scoreValue.textContent = score;
   elements.scoreSummary.textContent = summary;
-  
+
   // 更新分数颜色
   if (score >= 60) {
     elements.scoreValue.style.color = '#22c55e';
@@ -450,7 +478,7 @@ function renderConclusion() {
   let riskLevel = 'medium';
   let title = '🟡 建议观望';
   let desc = '市场信号混合，建议谨慎评估后再行动';
-  
+
   if (text.includes('🟢') || text.includes('建议执行')) {
     riskLevel = 'low';
     title = '🟢 条件有利';
@@ -460,7 +488,7 @@ function renderConclusion() {
     title = '🔴 高风险警告';
     desc = '当前市场条件不利，建议暂缓操作';
   }
-  
+
   elements.conclusionBadge.className = `conclusion-badge ${riskLevel}`;
   elements.conclusionBadge.querySelector('.conclusion-title').textContent = title;
   elements.conclusionBadge.querySelector('.conclusion-desc').textContent = desc;
@@ -474,7 +502,7 @@ function handleRetry() {
   state.status = 'idle';
   state.recognizeResult = null;
   state.analysisText = '';
-  
+
   chrome.runtime.sendMessage({ type: 'RETRY_CAPTURE' });
   renderRecognizing();
 }
@@ -589,14 +617,14 @@ async function fetchAndRenderTwitterSentiment(symbol) {
  */
 function renderTwitterSentiment(data) {
   const { totalCount, positive, negative, neutral, overallSentiment, confidencePercent, tweets } = data;
-  
+
   const positivePercent = totalCount > 0 ? Math.round((positive / totalCount) * 100) : 0;
   const negativePercent = totalCount > 0 ? Math.round((negative / totalCount) * 100) : 0;
   const neutralPercent = totalCount > 0 ? Math.round((neutral / totalCount) * 100) : 0;
-  
-  const sentimentColor = overallSentiment === 'BULLISH' ? 'var(--accent-green)' : 
-                         overallSentiment === 'BEARISH' ? 'var(--accent-red)' : '#9e9e9e';
-  
+
+  const sentimentColor = overallSentiment === 'BULLISH' ? 'var(--accent-green)' :
+    overallSentiment === 'BEARISH' ? 'var(--accent-red)' : '#9e9e9e';
+
   const emoji = overallSentiment === 'BULLISH' ? '🟢' : overallSentiment === 'BEARISH' ? '🔴' : '⚪';
 
   elements.twitterContent.innerHTML = `
@@ -638,6 +666,120 @@ function renderTwitterError(error) {
     </div>
   `;
 }
+
+// ========== Smart Intercept: 拦截模式渲染 ==========
+
+/**
+ * 渲染拦截交易信息
+ */
+function renderInterceptedTrade(data) {
+  const { tradeContext, scoreResult } = data;
+
+  hideStatus();
+  showStageIndicator('recognizing', '🛡️ 交易已拦截 - AI 分析中...');
+
+  // 填充识别结果区
+  const platformIcon = getPlatformIcon(tradeContext.platform);
+  const dirLabel = tradeContext.direction === 'buy' ? '🟢 买入' : '🔴 卖出';
+  const levelEmoji = scoreResult.level === 'low' ? '✅' : scoreResult.level === 'medium' ? '⚠️' : '🔴';
+  const levelText = scoreResult.level === 'low' ? '低风险' : scoreResult.level === 'medium' ? '中等风险' : '高风险';
+
+  elements.recognizeContent.innerHTML = `
+    <div class="recognize-result">
+      <div class="platform-badge">
+        ${platformIcon}
+        <span>${tradeContext.platform}</span>
+      </div>
+      <div class="pair-display">${tradeContext.rawSymbol || tradeContext.symbol}</div>
+      <div class="trade-type">${dirLabel} | ${tradeContext.price ? '$' + tradeContext.price : ''}</div>
+      ${tradeContext.leverage ? `<div class="trade-type">杠杆: ${tradeContext.leverage}x</div>` : ''}
+      <div class="trade-type" style="margin-top: 4px">
+        ${levelEmoji} <strong>快速评分: ${scoreResult.score}分 (${levelText})</strong>
+      </div>
+      <div style="font-size: 11px; color: #8b949e; margin-top: 4px">${scoreResult.reasons.join(' | ')}</div>
+    </div>
+  `;
+
+  // 隐藏手动操作区，直接进入分析
+  elements.intentSection.classList.add('hidden');
+  elements.noFomoSection.classList.add('hidden');
+
+  // 自动推导方向并启动分析
+  const direction = tradeContext.direction === 'buy' ? 'LONG' : 'SHORT';
+  const symbol = tradeContext.symbol;
+
+  state.selectedIntent = direction;
+  state.status = 'analyzing';
+  state.analysisText = '';
+
+  state.pendingAnalyzePayload = {
+    symbol,
+    direction,
+    marketData: {
+      price: tradeContext.price || '0',
+      change24h: '0', volume: '0', high24h: '0', low24h: '0',
+      fearGreedIndex: null, fearGreedLabel: null, klines: null,
+    }
+  };
+
+  // 直接开始分析（跳过 NoFOMO 检查，因为 Stage 1 已评分）
+  elements.scoreSection.classList.remove('hidden');
+  elements.analysisSection.classList.remove('hidden');
+  elements.analysisContent.innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>AI 正在深度分析...</span>
+    </div>
+  `;
+
+  // analysis 已由 background.js 启动，这里只需等待流式结果
+  fetchAndRenderTwitterSentiment(symbol);
+}
+
+/**
+ * 覆写结论渲染，添加用户决策按钮
+ */
+const _originalRenderConclusion = renderConclusion;
+renderConclusion = function () {
+  _originalRenderConclusion();
+
+  // 如果是拦截模式，添加 “继续执行/取消交易” 按钮
+  if (state.isInterceptMode && state.interceptData) {
+    const actionDiv = document.createElement('div');
+    actionDiv.className = 'intercept-actions';
+    actionDiv.style.cssText = 'display:flex; gap:8px; margin-top:12px; padding:0 16px 16px;';
+    actionDiv.innerHTML = `
+      <button id="interceptProceedBtn" class="btn-intercept btn-proceed" style="flex:1;padding:10px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#238636,#2ea043);color:#fff;">✅ 继续执行</button>
+      <button id="interceptCancelBtn" class="btn-intercept btn-cancel" style="flex:1;padding:10px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#21262d;color:#8b949e;">❌ 取消交易</button>
+    `;
+
+    const conclusionSection = elements.conclusionSection;
+    // 移除旧的按钮
+    const oldActions = conclusionSection.querySelector('.intercept-actions');
+    if (oldActions) oldActions.remove();
+    conclusionSection.appendChild(actionDiv);
+
+    document.getElementById('interceptProceedBtn').addEventListener('click', () => {
+      chrome.runtime.sendMessage({
+        type: 'USER_DECISION',
+        data: { proceed: true, tabId: state.interceptData.tabId }
+      });
+      showStageIndicator('complete', '✅ 已放行交易');
+      actionDiv.innerHTML = '<div style="text-align:center;color:#3fb950;font-weight:600;">✅ 已放行，请在交易平台确认</div>';
+      state.isInterceptMode = false;
+    });
+
+    document.getElementById('interceptCancelBtn').addEventListener('click', () => {
+      chrome.runtime.sendMessage({
+        type: 'USER_DECISION',
+        data: { proceed: false, tabId: state.interceptData.tabId }
+      });
+      showStageIndicator('complete', '❌ 已取消交易');
+      actionDiv.innerHTML = '<div style="text-align:center;color:#f85149;font-weight:600;">❌ 交易已取消</div>';
+      state.isInterceptMode = false;
+    });
+  }
+};
 
 // 初始化
 init();

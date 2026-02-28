@@ -3,19 +3,16 @@
   "name": "Oracle-X",
   "version": "1.0.0",
   "description": "AI-powered crypto trading FOMO checker - Check before you trade",
-  
   "permissions": [
     "activeTab",
     "sidePanel",
-    "storage"
+    "storage",
+    "alarms"
   ],
-  
   "side_panel": {
     "default_path": "sidepanel/index.html"
   },
-  
   "options_page": "settings/settings.html",
-
   "action": {
     "default_icon": {
       "16": "icons/icon16.svg",
@@ -24,12 +21,10 @@
     },
     "default_title": "Oracle-X - FOMO Check"
   },
-  
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-  
   "content_scripts": [
     {
       "matches": [
@@ -41,14 +36,23 @@
         "*://*.huobi.com/*",
         "*://*.gate.io/*",
         "*://*.uniswap.org/*",
-        "*://app.uniswap.org/*"
+        "*://app.uniswap.org/*",
+        "http://localhost/*"
       ],
-      "js": ["content/storage.js", "content/platforms.js", "content/vision-analyzer.js", "content/content.js"],
-      "css": ["content/styles.css"],
+      "js": [
+        "content/storage.js",
+        "content/platforms.js",
+        "content/quick-scorer.js",
+        "content/bubble-notification.js",
+        "content/vision-analyzer.js",
+        "content/content.js"
+      ],
+      "css": [
+        "content/styles.css"
+      ],
       "run_at": "document_end"
     }
   ],
-  
   "commands": {
     "_execute_action": {
       "suggested_key": {
@@ -58,13 +62,11 @@
       "description": "Capture screenshot and analyze"
     }
   },
-  
   "icons": {
     "16": "icons/icon16.svg",
     "48": "icons/icon48.svg",
     "128": "icons/icon128.svg"
   },
-  
   "host_permissions": [
     "http://localhost:3000/*",
     "http://localhost:3001/*",

@@ -56,6 +56,17 @@ class NotificationManager {
   }
 
   /**
+   * 通用通知
+   */
+  show(title, body) {
+    if (!this.enabled || !Notification.isSupported()) return;
+
+    const notification = new Notification({ title, body });
+    notification.show();
+    return notification;
+  }
+
+  /**
    * 启用/禁用通知
    */
   setEnabled(enabled) {

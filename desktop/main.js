@@ -50,13 +50,14 @@ let settings = {
   apiKey: 'sk-cXCZzJiwtakwpzV9ZIY8m4UoaCSL4jnHbUkaCyAeItzOdBdq',
   apiBaseUrl: 'https://mydmx.huoyuanqudao.cn/v1',
   aiModel: 'MiniMax-M2.5-highspeed',
-  monitorMode: MONITOR_MODES.SCREENSHOT,
+  monitorMode: 'manual',  // 默认手动模式（不自动截图/监控）
   targetApps: ['Binance', 'OKX', 'Bybit', 'Coinbase'],
   cooldown: 5,
   enableBlock: true,
   minimizeToTray: true,
   autoStart: false,
   notifications: true,
+  autoMonitorEnabled: false,  // 自动监控默认关闭
 };
 
 function createWindow() {
@@ -93,14 +94,13 @@ function createWindow() {
 }
 
 async function initAll() {
-  // ===== 初始化 MySQL 连接 =====
+  // ===== 初始化 SQLite 数据库 =====
   try {
     db = await Database.init();
     console.log('[Oracle-X] Database ready');
   } catch (err) {
     console.error('[Oracle-X] Database init failed:', err.message);
-    dialog.showErrorBox('数据库错误', `MySQL 连接失败: ${err.message}\n\n请确保 MySQL 已启动 (brew services start mysql)`);
-    return;
+    // SQLite 不会失败（除非磁盘满），仅记录日志
   }
 
   // ===== 设置存储 =====
@@ -201,27 +201,100 @@ async function initAll() {
     },
   });
 
-  monitor.start();
+  // 只有用户显式开启自动监控时才启动
+  if (settings.autoMonitorEnabled && monitor) {
+    const { PermissionManager } = require('./permission-manager');
+    const permManager = new PermissionManager();
+    const perms = await permManager.checkAll();
+
+    if (perms.screenCapture) {
+      monitor.start();
+      console.log('[Oracle-X] Auto monitor started (permissions granted)');
+    } else {
+      console.log('[Oracle-X] Auto monitor skipped (no screen capture permission)');
+      settings.autoMonitorEnabled = false;
+    }
+  }
 }
 
 function registerHotkeys() {
-  globalShortcut.register('CommandOrControl+Shift+O', () => {
+  // Cmd+Shift+O: 显示/隐藏主窗口
+  const toggleRegistered = globalShortcut.register('CommandOrControl+Shift+O', () => {
     if (mainWindow) {
       if (mainWindow.isVisible()) mainWindow.hide();
       else { mainWindow.show(); mainWindow.focus(); }
     }
   });
+  console.log('[Hotkey] Cmd+Shift+O registered:', toggleRegistered);
 
-  globalShortcut.register('CommandOrControl+Shift+S', async () => {
+  // Cmd+Shift+S: 手动截图分析
+  const screenshotRegistered = globalShortcut.register('CommandOrControl+Shift+S', async () => {
+    console.log('[Hotkey] Cmd+Shift+S triggered');
+
     const { exec } = require('child_process');
+    const fs = require('fs');
     const tmpFile = `/tmp/oraclex_${Date.now()}.png`;
+
+    // 直接尝试截图（不预检权限，因为 screencapture 权限跟终端走）
     exec(`/usr/sbin/screencapture -x ${tmpFile}`, async (err) => {
-      if (!err && screenshotAnalyzer) {
-        const result = await screenshotAnalyzer.analyze(tmpFile);
-        if (mainWindow) mainWindow.webContents.send('screenshot-result', result);
+      // 检查截图是否成功（文件存在且 > 0 字节）
+      const fileExists = !err && fs.existsSync(tmpFile);
+      const fileSize = fileExists ? fs.statSync(tmpFile).size : 0;
+
+      if (!fileExists || fileSize === 0) {
+        console.log('[Hotkey] Screenshot failed or empty (permission issue?)');
+        // 截图失败 → 引导授权
+        const { PermissionManager } = require('./permission-manager');
+        const permManager = new PermissionManager();
+        await permManager.requestScreenCapture(mainWindow);
+        return;
       }
+
+      console.log('[Hotkey] Screenshot saved:', tmpFile, `(${fileSize} bytes)`);
+
+      // 通知用户正在分析
+      if (notificationManager) {
+        notificationManager.show('📸 截图已捕获', '正在进行 AI 分析...');
+      }
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        mainWindow.webContents.send('screenshot-captured', { path: tmpFile });
+      }
+
+      // AI 分析
+      if (screenshotAnalyzer && settings.apiKey) {
+        try {
+          const result = await screenshotAnalyzer.analyze(tmpFile);
+          console.log('[Hotkey] Analysis result:', result?.action || 'unknown');
+
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('screenshot-result', result);
+          }
+          if (notificationManager) {
+            const emoji = result?.action === 'block' ? '🔴' : '✅';
+            notificationManager.show(`${emoji} 分析完成`, result?.summary || '分析已完成');
+          }
+        } catch (analyzeErr) {
+          console.error('[Hotkey] Analysis error:', analyzeErr.message);
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('screenshot-error', { error: analyzeErr.message });
+          }
+          if (notificationManager) {
+            notificationManager.show('❌ 分析失败', analyzeErr.message);
+          }
+        }
+      } else {
+        if (notificationManager) {
+          notificationManager.show('📸 截图已保存', '请配置 AI API Key 以启用分析功能');
+        }
+      }
+
+      // 清理临时截图文件
+      try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
     });
   });
+  console.log('[Hotkey] Cmd+Shift+S registered:', screenshotRegistered);
 }
 
 async function showFomoWarning(appName, analysis = null) {
@@ -403,13 +476,91 @@ function setupIPC() {
   // ==================== 导出 ====================
   ipcMain.handle('exportData', (event, data, format) => dataExporter.exportAnalysis(data, format));
 
-  // ==================== 截图 ====================
+  // ==================== 权限管理 ====================
+  ipcMain.handle('checkPermissions', async () => {
+    const { PermissionManager } = require('./permission-manager');
+    const permManager = new PermissionManager();
+    return permManager.checkAll();
+  });
+
+  ipcMain.handle('toggleAutoMonitor', async (event, enable) => {
+    if (enable) {
+      // 开启自动监控前检查权限
+      const { PermissionManager } = require('./permission-manager');
+      const permManager = new PermissionManager();
+      const ready = await permManager.requestForAutoMonitor(mainWindow);
+
+      if (!ready) {
+        return { success: false, reason: 'permissions_pending' };
+      }
+
+      settings.autoMonitorEnabled = true;
+      if (monitor && !monitor.isRunning) {
+        monitor.start();
+      }
+      return { success: true };
+    } else {
+      settings.autoMonitorEnabled = false;
+      if (monitor) monitor.stop();
+      return { success: true };
+    }
+  });
+
+  // ==================== 截图 + AI 分析 ====================
   ipcMain.handle('takeScreenshot', async () => {
     const { exec } = require('child_process');
-    return new Promise((resolve) => {
-      const tmpFile = `/tmp/oraclex_${Date.now()}.png`;
-      exec(`/usr/sbin/screencapture -x ${tmpFile}`, (err) => resolve(err ? null : tmpFile));
+    const fs = require('fs');
+    const tmpFile = `/tmp/oraclex_${Date.now()}.png`;
+
+    // 1. 截图
+    const screenshotOk = await new Promise((resolve) => {
+      exec(`/usr/sbin/screencapture -x ${tmpFile}`, (err) => {
+        const exists = !err && fs.existsSync(tmpFile);
+        const size = exists ? fs.statSync(tmpFile).size : 0;
+        resolve(exists && size > 0);
+      });
     });
+
+    if (!screenshotOk) {
+      // 截图失败 → 引导授权
+      const { PermissionManager } = require('./permission-manager');
+      const permManager = new PermissionManager();
+      await permManager.requestScreenCapture(mainWindow);
+      return null;
+    }
+
+    console.log('[Screenshot] Captured:', tmpFile);
+
+    // 2. 通知 renderer 已截图
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('screenshot-captured', { path: tmpFile });
+    }
+
+    // 3. AI 分析
+    if (screenshotAnalyzer && settings.apiKey) {
+      try {
+        const result = await screenshotAnalyzer.analyze(tmpFile);
+        console.log('[Screenshot] Analysis result:', result?.action || 'unknown');
+
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('screenshot-result', result);
+        }
+
+        // 清理临时文件
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+
+        return result;
+      } catch (err) {
+        console.error('[Screenshot] Analysis error:', err.message);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('screenshot-error', { error: err.message });
+        }
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+        return { error: err.message };
+      }
+    }
+
+    return { path: tmpFile };
   });
 
   // ==================== 窗口控制 ====================
