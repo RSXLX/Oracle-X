@@ -5,6 +5,9 @@
 
 const { Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
+const { I18nMain } = require('../i18n-main');
+
+const i18n = new I18nMain();
 
 class TrayManager {
   constructor(mainWindow) {
@@ -16,14 +19,12 @@ class TrayManager {
    * 创建系统托盘
    */
   create() {
-    // 创建托盘图标（使用内置图标）
     const iconPath = path.join(__dirname, 'icons', 'icon.png');
     let icon;
-    
+
     try {
       icon = nativeImage.createFromPath(iconPath);
       if (icon.isEmpty()) {
-        // 创建默认图标
         icon = nativeImage.createEmpty();
       }
     } catch {
@@ -32,10 +33,9 @@ class TrayManager {
 
     this.tray = new Tray(icon.resize({ width: 16, height: 16 }));
     this.tray.setToolTip('Oracle-X NoFOMO');
-    
+
     this.updateContextMenu();
-    
-    // 点击托盘图标显示/隐藏窗口
+
     this.tray.on('click', () => {
       if (this.mainWindow) {
         if (this.mainWindow.isVisible()) {
@@ -51,6 +51,14 @@ class TrayManager {
   }
 
   /**
+   * 设置语言
+   */
+  setLocale(lang) {
+    i18n.setLocale(lang);
+    this.updateContextMenu();
+  }
+
+  /**
    * 更新托盘菜单
    */
   updateContextMenu(stats = {}) {
@@ -61,16 +69,16 @@ class TrayManager {
       },
       { type: 'separator' },
       {
-        label: `今日阻断: ${stats.todayBlock || 0}`,
+        label: i18n.t('tray.todayBlock', { count: stats.todayBlock || 0 }),
         enabled: false,
       },
       {
-        label: `风险化解: ${stats.mitigationRate || '0%'}`,
+        label: i18n.t('tray.mitigationRate', { rate: stats.mitigationRate || '0%' }),
         enabled: false,
       },
       { type: 'separator' },
       {
-        label: '显示主窗口',
+        label: i18n.t('tray.showWindow'),
         click: () => {
           if (this.mainWindow) {
             this.mainWindow.show();
@@ -79,7 +87,7 @@ class TrayManager {
         },
       },
       {
-        label: '立即截图分析',
+        label: i18n.t('tray.screenshot'),
         click: () => {
           if (this.mainWindow) {
             this.mainWindow.webContents.send('trigger-screenshot');
@@ -88,7 +96,7 @@ class TrayManager {
       },
       { type: 'separator' },
       {
-        label: '退出',
+        label: i18n.t('tray.quit'),
         click: () => {
           if (this.mainWindow) {
             this.mainWindow.destroy();

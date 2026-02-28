@@ -71,6 +71,9 @@ const { InterceptionEngine } = require('./core/interception-engine');
 const { SettingsStorage } = require('./data/settings-storage');
 const { StatsTracker } = require('./system/stats-tracker');
 const { DecisionLogger } = require('./data/decision-logger');
+const { I18nMain } = require('./i18n-main');
+
+const i18n = new I18nMain();
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -346,7 +349,7 @@ function registerHotkeys() {
 
       // 通知用户正在分析
       if (notificationManager) {
-        notificationManager.show('📸 截图已捕获', '正在进行 AI 分析...');
+        notificationManager.show(i18n.t('dialog.screenshotCaptured'), i18n.t('dialog.analyzingBody'));
       }
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.show();
@@ -365,7 +368,7 @@ function registerHotkeys() {
           }
           if (notificationManager) {
             const emoji = result?.action === 'block' ? '🔴' : '✅';
-            notificationManager.show(`${emoji} 分析完成`, result?.summary || '分析已完成');
+            notificationManager.show(`${emoji} ${i18n.t('dialog.analysisComplete')}`, result?.summary || i18n.t('dialog.analysisDone'));
           }
         } catch (analyzeErr) {
           console.error('[Hotkey] Analysis error:', analyzeErr.message);
@@ -373,12 +376,12 @@ function registerHotkeys() {
             mainWindow.webContents.send('screenshot-error', { error: analyzeErr.message });
           }
           if (notificationManager) {
-            notificationManager.show('❌ 分析失败', analyzeErr.message);
+            notificationManager.show(i18n.t('dialog.analysisFailed'), analyzeErr.message);
           }
         }
       } else {
         if (notificationManager) {
-          notificationManager.show('📸 截图已保存', '请配置 AI API Key 以启用分析功能');
+          notificationManager.show(i18n.t('dialog.screenshotSaved'), i18n.t('dialog.configureApiKey'));
         }
       }
 
@@ -390,15 +393,15 @@ function registerHotkeys() {
 }
 
 async function showFomoWarning(appName, analysis = null) {
-  let detail = `检测到您正在 ${appName} 交易\n\n冷静期: ${settings.cooldown} 秒`;
-  if (analysis?.buttons?.length) detail += `\n\n按钮: ${analysis.buttons.join(', ')}`;
+  let detail = i18n.t('dialog.warningDetail', { app: appName, cooldown: settings.cooldown });
+  if (analysis?.buttons?.length) detail += `\n\n${i18n.t('monitor.buttons')}: ${analysis.buttons.join(', ')}`;
 
   const result = await dialog.showMessageBox(mainWindow, {
     type: 'warning',
-    title: '⚠️ Oracle-X 警告',
-    message: '检测到交易操作',
+    title: i18n.t('dialog.warningTitle'),
+    message: i18n.t('dialog.warningMessage'),
     detail,
-    buttons: ['取消交易', '继续'],
+    buttons: [i18n.t('dialog.cancelTrade'), i18n.t('dialog.continue')],
     defaultId: 0,
   });
 
@@ -409,42 +412,42 @@ async function showFomoWarning(appName, analysis = null) {
  * 智能风控弹窗（整合交易习惯 + 市场分析）
  */
 async function showSmartWarning(appName, report) {
-  const lines = [`平台: ${report.screenshot?.platform || appName}`];
+  const lines = [`${i18n.t('dialog.platform')}: ${report.screenshot?.platform || appName}`];
 
   if (report.symbol) {
-    lines.push(`品种: ${report.symbol}`);
+    lines.push(`${i18n.t('dialog.symbol')}: ${report.symbol}`);
   }
 
   // 实时市场行情
   if (report.marketInfo) {
     const m = report.marketInfo;
     const changeSign = m.change24h >= 0 ? '+' : '';
-    lines.push(`当前价: ${m.price} ${m.currency || ''} (${changeSign}${m.change24h}%)`);
-    lines.push(`24h 高/低: ${m.high24h} / ${m.low24h}`);
+    lines.push(`${i18n.t('dialog.currentPrice')}: ${m.price} ${m.currency || ''} (${changeSign}${m.change24h}%)`);
+    lines.push(`${i18n.t('dialog.high24hLow24h')}: ${m.high24h} / ${m.low24h}`);
   }
 
   // 用户交易历史
   if (report.tradeHistory?.count > 0) {
     const h = report.tradeHistory;
     lines.push('');
-    lines.push('📊 你的交易历史:');
-    lines.push(`  交易 ${h.count} 次 | 买 ${h.buys} 卖 ${h.sells}`);
-    if (h.lastTradeTime) lines.push(`  上次交易: ${h.lastTradeTime}`);
-    if (h.pnlSummary) lines.push(`  累计盈亏: ${h.pnlSummary}`);
-    if (h.recentFrequency) lines.push(`  近期频率: ${h.recentFrequency}`);
+    lines.push(i18n.t('dialog.tradeHistoryTitle'));
+    lines.push(i18n.t('dialog.tradeHistoryLine', { count: h.count, buys: h.buys, sells: h.sells }));
+    if (h.lastTradeTime) lines.push(i18n.t('dialog.lastTrade', { time: h.lastTradeTime }));
+    if (h.pnlSummary) lines.push(i18n.t('dialog.totalPnl', { pnl: h.pnlSummary }));
+    if (h.recentFrequency) lines.push(i18n.t('dialog.recentFrequency', { freq: h.recentFrequency }));
   }
 
   // 风险评估
   if (report.risk) {
     lines.push('');
-    lines.push(`⚠️ 风险等级: ${report.risk.riskLabel} (${report.risk.score}/100)`);
+    lines.push(i18n.t('dialog.riskLabel', { label: report.risk.riskLabel, score: report.risk.score }));
     const recs = (report.risk.recommendations || []).slice(0, 3);
     for (const rec of recs) {
       lines.push(`  • ${rec.title}`);
     }
   }
 
-  lines.push(`\n冷静期: ${settings.cooldown} 秒`);
+  lines.push(`\n${i18n.t('dialog.cooldownLine', { cooldown: settings.cooldown })}`);
 
   // 发送到前端展示
   if (mainWindow) {
@@ -453,10 +456,10 @@ async function showSmartWarning(appName, report) {
 
   const result = await dialog.showMessageBox(mainWindow, {
     type: 'warning',
-    title: '⚠️ Oracle-X 智能风控',
-    message: '检测到交易操作 — AI 综合分析',
+    title: i18n.t('dialog.smartWarningTitle'),
+    message: i18n.t('dialog.smartWarningMessage'),
     detail: lines.join('\n'),
-    buttons: ['取消交易', '我已了解风险，继续'],
+    buttons: [i18n.t('dialog.cancelTrade'), i18n.t('dialog.iUnderstandContinue')],
     defaultId: 0,
   });
 
@@ -484,6 +487,14 @@ async function showSmartWarning(appName, report) {
 }
 
 function setupIPC() {
+  // ==================== 语言设置 ====================
+  ipcMain.handle('setLocale', (event, lang) => {
+    i18n.setLocale(lang);
+    // 刷新托盘菜单
+    if (trayManager) trayManager.updateContextMenu();
+    return true;
+  });
+
   // ==================== 设置 ====================
   ipcMain.handle('getSettings', () => settings);
   ipcMain.handle('saveSettings', async (event, newSettings) => {
@@ -558,9 +569,9 @@ function setupIPC() {
   // ==================== 文件导入（CSV / XLSX）====================
   ipcMain.handle('importFile', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
-      title: '选择交易记录文件',
+      title: i18n.t('dialog.fileDialogTitle'),
       filters: [
-        { name: '交易记录', extensions: ['csv', 'xlsx', 'xls'] },
+        { name: i18n.t('dialog.fileFilterTrade'), extensions: ['csv', 'xlsx', 'xls'] },
         { name: 'CSV', extensions: ['csv'] },
         { name: 'Excel', extensions: ['xlsx', 'xls'] },
       ],

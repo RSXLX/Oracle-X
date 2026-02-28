@@ -1,10 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
   <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#667eea"/>
-      <stop offset="100%" style="stop-color:#764ba2"/>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#667eea"/>
+      <stop offset="100%" stop-color="#764ba2"/>
+    </linearGradient>
+    <linearGradient id="pulseGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#c4b5fd"/>
+      <stop offset="50%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#c4b5fd"/>
     </linearGradient>
   </defs>
-  <circle cx="8" cy="8" r="7" fill="url(#g)"/>
-  <text x="8" y="11" font-size="8" text-anchor="middle" fill="white">🔮</text>
+  <!-- Background circle -->
+  <circle cx="8" cy="8" r="7.5" fill="url(#bgGrad)"/>
+  <!-- Iris -->
+  <circle cx="8" cy="8" r="3" fill="#a78bfa" opacity="0.9"/>
+  <!-- Core -->
+  <circle cx="8" cy="8" r="1.5" fill="#e0e7ff" opacity="0.8"/>
+  <!-- Pupil -->
+  <circle cx="8" cy="8" r="0.8" fill="#1e1b4b" opacity="0.7"/>
+  <!-- K-line pulse wave (simplified) -->
+  <polyline points="2.5,8 5,8 6,6 7,9.5 8,5.5 9,9.5 10,6 11,8 13.5,8"
+    fill="none" stroke="url(#pulseGrad)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
 </svg>

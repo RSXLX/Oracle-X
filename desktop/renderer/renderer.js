@@ -2,6 +2,9 @@
  * Oracle-X Desktop Renderer - Enhanced with AI Analysis
  */
 
+// i18n shorthand
+const t = I18n.t.bind(I18n);
+
 // 当前数据状态
 let currentTransactions = null;
 let currentWalletIndex = -1;
@@ -39,9 +42,9 @@ async function saveSettings() {
       autoStart: document.getElementById('autoStart').checked,
 
     });
-    showStatus('saveBtn', '已保存', 'success');
+    showStatus('saveBtn', t('common.saved'), 'success');
   } catch (err) {
-    showStatus('saveBtn', '保存失败', 'error');
+    showStatus('saveBtn', t('common.saveFailed'), 'error');
   }
 }
 
@@ -76,7 +79,7 @@ async function loadWallets() {
 function renderWalletList() {
   const list = document.getElementById('walletList');
   if (!walletState.wallets.length) {
-    list.innerHTML = '<p class="muted">暂无钱包</p>';
+    list.innerHTML = `<p class="muted">${t('wallet.noWallet')}</p>`;
     return;
   }
 
@@ -89,7 +92,7 @@ function renderWalletList() {
         ${w.balance ? `<span class="badge badge-allow">${w.balance.balance?.toFixed(4)} ${w.balance.symbol}</span>` : ''}
       </div>
       <div class="wallet-actions">
-        <button class="btn btn-secondary" onclick="selectWallet(${i})">📊 查看</button>
+        <button class="btn btn-secondary" onclick="selectWallet(${i})">${t('wallet.viewBtn')}</button>
         <button class="btn btn-accent" onclick="aiAnalyzeWalletAction(${i})">🤖 AI</button>
         <button class="btn btn-secondary" onclick="removeWalletAction(${i})">🗑️</button>
       </div>
@@ -103,7 +106,7 @@ async function addWallet() {
   const label = document.getElementById('walletLabel').value || `Wallet ${walletState.wallets.length + 1}`;
 
   if (!address) {
-    alert('请输入钱包地址');
+    alert(t('wallet.enterAddress'));
     return;
   }
 
@@ -113,20 +116,20 @@ async function addWallet() {
     document.getElementById('walletLabel').value = '';
     await loadWallets();
   } catch (err) {
-    alert('添加失败: ' + err.message);
+    alert(t('wallet.addFailed') + ': ' + err.message);
   }
 }
 
 async function removeWalletAction(index) {
   const wallet = walletState.wallets[index];
   if (!wallet) return;
-  if (!confirm(`确认删除钱包 "${wallet.label}"？`)) return;
+  if (!confirm(t('wallet.confirmDelete', { label: wallet.label }))) return;
 
   try {
     await window.oracleDesktop.removeWallet(wallet.address);
     await loadWallets();
   } catch (err) {
-    alert('删除失败: ' + err.message);
+    alert(t('common.deleteFailed') + ': ' + err.message);
   }
 }
 
@@ -136,7 +139,7 @@ async function selectWallet(index) {
   currentWalletIndex = index;
 
   const analysisEl = document.getElementById('walletAnalysis');
-  analysisEl.innerHTML = '<div class="loading">加载中</div>';
+  analysisEl.innerHTML = `<div class="loading">${t('common.loading')}</div>`;
 
   try {
     const [analysis, txs] = await Promise.all([
@@ -148,7 +151,7 @@ async function selectWallet(index) {
     renderWalletTransactions(txs);
     await loadWallets(); // 刷新余额
   } catch (err) {
-    analysisEl.innerHTML = '<p class="error">加载失败: ' + err.message + '</p>';
+    analysisEl.innerHTML = `<p class="error">${t('common.loadFailed')}: ${err.message}</p>`;
   }
 }
 
@@ -157,35 +160,35 @@ async function aiAnalyzeWalletAction(index) {
   if (!wallet) return;
 
   const aiEl = document.getElementById('walletAIAnalysis');
-  aiEl.innerHTML = '<div class="loading">AI 分析中，请稍候</div>';
+  aiEl.innerHTML = `<div class="loading">${t('wallet.aiAnalyzing')}</div>`;
 
   try {
     const result = await window.oracleDesktop.aiAnalyzeWallet(wallet.address, wallet.chain);
     renderWalletAIAnalysis(result);
   } catch (err) {
-    aiEl.innerHTML = '<p class="error">AI 分析失败: ' + err.message + '</p>';
+    aiEl.innerHTML = `<p class="error">${t('wallet.aiFailed')}: ${err.message}</p>`;
   }
 }
 
 function renderWalletAnalysis(data, wallet = {}) {
   const el = document.getElementById('walletAnalysis');
   if (!data || data.error) {
-    el.innerHTML = '<p class="muted">无法获取分析</p>';
+    el.innerHTML = `<p class="muted">${t('wallet.analysisFailed')}</p>`;
     return;
   }
 
   const s = data.stats || {};
   el.innerHTML = `
     <div class="stats-grid">
-      <div class="stat"><span class="stat-label">交易次数</span><span class="stat-value">${s.total || 0}</span></div>
-      <div class="stat"><span class="stat-label">交易风格</span><span class="stat-value">${data.style || '?'}</span></div>
-      <div class="stat"><span class="stat-label">风险等级</span><span class="stat-value">${data.riskLevel || 'low'}</span></div>
-      <div class="stat"><span class="stat-label">日均交易</span><span class="stat-value">${(s.tradingFrequency || 0).toFixed(1)}</span></div>
-      <div class="stat"><span class="stat-label">总收入</span><span class="stat-value">${(s.totalReceived || 0).toFixed(4)}</span></div>
-      <div class="stat"><span class="stat-label">总支出</span><span class="stat-value">${(s.totalSent || 0).toFixed(4)}</span></div>
+      <div class="stat"><span class="stat-label">${t('wallet.txCount')}</span><span class="stat-value">${s.total || 0}</span></div>
+      <div class="stat"><span class="stat-label">${t('wallet.tradeStyle')}</span><span class="stat-value">${data.style || '?'}</span></div>
+      <div class="stat"><span class="stat-label">${t('wallet.riskLevel')}</span><span class="stat-value">${data.riskLevel || 'low'}</span></div>
+      <div class="stat"><span class="stat-label">${t('wallet.dailyAvg')}</span><span class="stat-value">${(s.tradingFrequency || 0).toFixed(1)}</span></div>
+      <div class="stat"><span class="stat-label">${t('wallet.totalReceived')}</span><span class="stat-value">${(s.totalReceived || 0).toFixed(4)}</span></div>
+      <div class="stat"><span class="stat-label">${t('wallet.totalSent')}</span><span class="stat-value">${(s.totalSent || 0).toFixed(4)}</span></div>
     </div>
     ${data.topMethods?.length ? `
-      <h3 style="margin-top:12px;">常用合约方法</h3>
+      <h3 style="margin-top:12px;">${t('wallet.topMethods')}</h3>
       <div style="display:flex;flex-wrap:wrap;gap:4px;">
         ${data.topMethods.map(m => `<span class="ai-pattern">${m.method} (${m.count})</span>`).join('')}
       </div>
@@ -196,26 +199,26 @@ function renderWalletAnalysis(data, wallet = {}) {
 function renderWalletAIAnalysis(data) {
   const el = document.getElementById('walletAIAnalysis');
   if (!data || data.error) {
-    el.innerHTML = `<p class="error">${data?.error || 'AI 分析失败'}</p>`;
+    el.innerHTML = `<p class="error">${data?.error || t('wallet.aiFailed')}</p>`;
     return;
   }
 
   let html = '<div class="ai-result">';
 
   if (data.summary) {
-    html += `<div class="ai-section"><h4>📝 总结</h4><div class="ai-summary">${data.summary}</div></div>`;
+    html += `<div class="ai-section"><h4>${t('wallet.aiSummary')}</h4><div class="ai-summary">${data.summary}</div></div>`;
   }
   if (data.walletType) {
-    html += `<div class="ai-section"><h4>🏷️ 钱包类型</h4><span class="badge badge-allow">${data.walletType}</span> · 活跃度: ${data.activityLevel || '?'}</div>`;
+    html += `<div class="ai-section"><h4>${t('wallet.aiWalletType')}</h4><span class="badge badge-allow">${data.walletType}</span> · ${t('wallet.aiActivity')}: ${data.activityLevel || '?'}</div>`;
   }
   if (data.mainActivities?.length) {
-    html += `<div class="ai-section"><h4>🎯 主要活动</h4>${data.mainActivities.map(a => `<div class="ai-suggestion">${a}</div>`).join('')}</div>`;
+    html += `<div class="ai-section"><h4>${t('wallet.aiMainActivities')}</h4>${data.mainActivities.map(a => `<div class="ai-suggestion">${a}</div>`).join('')}</div>`;
   }
   if (data.riskIndicators?.length) {
-    html += `<div class="ai-section"><h4>⚠️ 风险指标</h4>${data.riskIndicators.map(r => `<div class="insight-warning">${r}</div>`).join('')}</div>`;
+    html += `<div class="ai-section"><h4>${t('wallet.aiRiskIndicators')}</h4>${data.riskIndicators.map(r => `<div class="insight-warning">${r}</div>`).join('')}</div>`;
   }
   if (data.suggestions?.length) {
-    html += `<div class="ai-section"><h4>💡 建议</h4>${data.suggestions.map(s => `<div class="ai-suggestion">${s}</div>`).join('')}</div>`;
+    html += `<div class="ai-section"><h4>${t('wallet.aiSuggestions')}</h4>${data.suggestions.map(s => `<div class="ai-suggestion">${s}</div>`).join('')}</div>`;
   }
 
   html += '</div>';
@@ -225,14 +228,14 @@ function renderWalletAIAnalysis(data) {
 function renderWalletTransactions(txs) {
   const tbody = document.getElementById('txTbody');
   if (!txs?.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="muted">暂无记录</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="5" class="muted">${t('common.noRecord')}</td></tr>`;
     return;
   }
 
   tbody.innerHTML = txs.slice(0, 30).map(tx => `
     <tr>
       <td>${tx.timestamp ? new Date(tx.timestamp).toLocaleString() : '-'}</td>
-      <td><span class="badge badge-${tx.isIncoming ? 'allow' : 'block'}">${tx.isIncoming ? '收入' : '支出'}</span></td>
+      <td><span class="badge badge-${tx.isIncoming ? 'allow' : 'block'}">${tx.isIncoming ? t('wallet.incoming') : t('wallet.outgoing')}</span></td>
       <td>${tx.value?.toFixed(4)} ${tx.symbol}</td>
       <td>${(tx.gas || 0).toFixed(6)}</td>
       <td>${tx.method || '-'}</td>
@@ -248,16 +251,16 @@ document.getElementById('refreshWalletBtn')?.addEventListener('click', () => {
 document.getElementById('saveWalletsBtn')?.addEventListener('click', async () => {
   try {
     await window.oracleDesktop.saveWalletData();
-    showStatus('saveWalletsBtn', '已保存', 'success');
+    showStatus('saveWalletsBtn', t('common.saved'), 'success');
   } catch (err) {
-    showStatus('saveWalletsBtn', '保存失败', 'error');
+    showStatus('saveWalletsBtn', t('common.saveFailed'), 'error');
   }
 });
 
 // ==================== 文件导入（CSV / XLSX）====================
 async function importFile() {
   const statusEl = document.getElementById('csvStatus');
-  statusEl.innerHTML = '<div class="loading">导入中</div>';
+  statusEl.innerHTML = `<div class="loading">${t('common.importing')}</div>`;
 
   try {
     const result = await window.oracleDesktop.importFile();
@@ -267,7 +270,7 @@ async function importFile() {
       return;
     }
 
-    statusEl.innerHTML = `<span class="success">✅ 已导入 ${result.count} 笔交易 (${result.format}) · 已保存到数据库</span>`;
+    statusEl.innerHTML = `<span class="success">${t('csv.importedCount', { count: result.count, format: result.format })}</span>`;
     currentTransactions = result.transactions;
 
     // 启用 AI 分析按钮
@@ -297,12 +300,12 @@ function renderCSVAnalysis(a) {
   // 基础统计卡片
   let html = `
     <div class="stats-grid">
-      <div class="stat"><span class="stat-label">交易次数</span><span class="stat-value">${stats.totalTrades || 0}</span></div>
-      <div class="stat"><span class="stat-label">交易风格</span><span class="stat-value">${a.style || '?'}</span></div>
-      <div class="stat"><span class="stat-label">风险等级</span><span class="stat-value">${a.riskLevel || 'low'}</span></div>
-      <div class="stat"><span class="stat-label">交易标的</span><span class="stat-value">${stats.uniqueSymbols || 0}</span></div>
-      <div class="stat"><span class="stat-label">总交易额</span><span class="stat-value">${(stats.totalVolume || 0).toFixed(0)}</span></div>
-      <div class="stat"><span class="stat-label">总手续费</span><span class="stat-value">${(stats.totalFees || 0).toFixed(2)}</span></div>
+      <div class="stat"><span class="stat-label">${t('csv.totalTrades')}</span><span class="stat-value">${stats.totalTrades || 0}</span></div>
+      <div class="stat"><span class="stat-label">${t('csv.tradeStyle')}</span><span class="stat-value">${a.style || '?'}</span></div>
+      <div class="stat"><span class="stat-label">${t('csv.riskLevel')}</span><span class="stat-value">${a.riskLevel || 'low'}</span></div>
+      <div class="stat"><span class="stat-label">${t('csv.symbols')}</span><span class="stat-value">${stats.uniqueSymbols || 0}</span></div>
+      <div class="stat"><span class="stat-label">${t('csv.totalVolume')}</span><span class="stat-value">${(stats.totalVolume || 0).toFixed(0)}</span></div>
+      <div class="stat"><span class="stat-label">${t('csv.totalFees')}</span><span class="stat-value">${(stats.totalFees || 0).toFixed(2)}</span></div>
     </div>
   `;
 
@@ -311,52 +314,52 @@ function renderCSVAnalysis(a) {
     const pnlColor = pnl.netPnl >= 0 ? '#3fb950' : '#f85149';
     const pnlSign = pnl.netPnl >= 0 ? '+' : '';
     html += `
-      <h3 style="margin-top:16px;">📊 盈亏分析</h3>
+      <h3 style="margin-top:16px;">${t('csv.pnlTitle')}</h3>
       <div class="stats-grid">
-        <div class="stat"><span class="stat-label">已实现盈亏</span><span class="stat-value" style="color:${pnlColor}">${pnlSign}${pnl.totalPnl.toFixed(2)}</span></div>
-        <div class="stat"><span class="stat-label">净盈亏(扣费)</span><span class="stat-value" style="color:${pnlColor}">${pnlSign}${pnl.netPnl.toFixed(2)}</span></div>
-        <div class="stat"><span class="stat-label">盈亏率</span><span class="stat-value" style="color:${pnlColor}">${pnl.pnlPct.toFixed(2)}%</span></div>
-        <div class="stat"><span class="stat-label">配对数</span><span class="stat-value">${pnl.pairsCount}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.realizedPnl')}</span><span class="stat-value" style="color:${pnlColor}">${pnlSign}${pnl.totalPnl.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.netPnl')}</span><span class="stat-value" style="color:${pnlColor}">${pnlSign}${pnl.netPnl.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.pnlPct')}</span><span class="stat-value" style="color:${pnlColor}">${pnl.pnlPct.toFixed(2)}%</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.pairsCount')}</span><span class="stat-value">${pnl.pairsCount}</span></div>
       </div>
 
-      <h3 style="margin-top:12px;">🎯 胜率与赔率</h3>
+      <h3 style="margin-top:12px;">${t('csv.winRateTitle')}</h3>
       <div class="stats-grid">
-        <div class="stat"><span class="stat-label">胜率</span><span class="stat-value">${pnl.winRate.toFixed(1)}%</span></div>
-        <div class="stat"><span class="stat-label">盈利/亏损</span><span class="stat-value">${pnl.wins}/${pnl.losses}</span></div>
-        <div class="stat"><span class="stat-label">平均盈利</span><span class="stat-value" style="color:#3fb950">${pnl.avgWin.toFixed(2)}</span></div>
-        <div class="stat"><span class="stat-label">平均亏损</span><span class="stat-value" style="color:#f85149">${pnl.avgLoss.toFixed(2)}</span></div>
-        <div class="stat"><span class="stat-label">盈亏比</span><span class="stat-value">${pnl.profitFactor === Infinity ? '∞' : pnl.profitFactor.toFixed(2)}</span></div>
-        <div class="stat"><span class="stat-label">连胜/连败</span><span class="stat-value">${pnl.streaks.maxWinStreak}/${pnl.streaks.maxLossStreak}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.winRate')}</span><span class="stat-value">${pnl.winRate.toFixed(1)}%</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.winLoss')}</span><span class="stat-value">${pnl.wins}/${pnl.losses}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.avgWin')}</span><span class="stat-value" style="color:#3fb950">${pnl.avgWin.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.avgLoss')}</span><span class="stat-value" style="color:#f85149">${pnl.avgLoss.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.profitFactor')}</span><span class="stat-value">${pnl.profitFactor === Infinity ? '∞' : pnl.profitFactor.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.winLossStreak')}</span><span class="stat-value">${pnl.streaks.maxWinStreak}/${pnl.streaks.maxLossStreak}</span></div>
       </div>
 
-      <h3 style="margin-top:12px;">⏱️ 持仓周期</h3>
+      <h3 style="margin-top:12px;">${t('csv.holdTitle')}</h3>
       <div class="stats-grid">
-        <div class="stat"><span class="stat-label">平均持仓</span><span class="stat-value">${formatHoldTime(pnl.holdPeriod.avgHours)}</span></div>
-        <div class="stat"><span class="stat-label">中位持仓</span><span class="stat-value">${formatHoldTime(pnl.holdPeriod.medianHours)}</span></div>
-        <div class="stat"><span class="stat-label">日内</span><span class="stat-value">${pnl.holdPeriod.buckets.intraday}</span></div>
-        <div class="stat"><span class="stat-label">1-3天</span><span class="stat-value">${pnl.holdPeriod.buckets.short}</span></div>
-        <div class="stat"><span class="stat-label">3天-1月</span><span class="stat-value">${pnl.holdPeriod.buckets.medium}</span></div>
-        <div class="stat"><span class="stat-label">超过1月</span><span class="stat-value">${pnl.holdPeriod.buckets.long}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.avgHold')}</span><span class="stat-value">${formatHoldTime(pnl.holdPeriod.avgHours)}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.medianHold')}</span><span class="stat-value">${formatHoldTime(pnl.holdPeriod.medianHours)}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.intraday')}</span><span class="stat-value">${pnl.holdPeriod.buckets.intraday}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.shortTerm')}</span><span class="stat-value">${pnl.holdPeriod.buckets.short}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.mediumTerm')}</span><span class="stat-value">${pnl.holdPeriod.buckets.medium}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.longTerm')}</span><span class="stat-value">${pnl.holdPeriod.buckets.long}</span></div>
       </div>
 
-      <h3 style="margin-top:12px;">📦 仓位管理</h3>
+      <h3 style="margin-top:12px;">${t('csv.positionTitle')}</h3>
       <div class="stats-grid">
-        <div class="stat"><span class="stat-label">单笔最大占比</span><span class="stat-value">${pnl.positionSizing.maxTradeRatio.toFixed(1)}%</span></div>
-        <div class="stat"><span class="stat-label">单标的最大占比</span><span class="stat-value">${pnl.positionSizing.maxSymbolRatio.toFixed(1)}%</span></div>
-        <div class="stat"><span class="stat-label">平均交易量</span><span class="stat-value">${pnl.positionSizing.avgTradeSize.toFixed(2)}</span></div>
-        <div class="stat"><span class="stat-label">手续费占比</span><span class="stat-value">${pnl.costEfficiency.feeToVolumeRatio.toFixed(3)}%</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.maxTradeRatio')}</span><span class="stat-value">${pnl.positionSizing.maxTradeRatio.toFixed(1)}%</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.maxSymbolRatio')}</span><span class="stat-value">${pnl.positionSizing.maxSymbolRatio.toFixed(1)}%</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.avgTradeSize')}</span><span class="stat-value">${pnl.positionSizing.avgTradeSize.toFixed(2)}</span></div>
+        <div class="stat"><span class="stat-label">${t('csv.feeRatio')}</span><span class="stat-value">${pnl.costEfficiency.feeToVolumeRatio.toFixed(3)}%</span></div>
       </div>
     `;
   } else if (pnl && !pnl.hasPairs) {
-    html += `<div class="insight-info" style="margin-top:12px;">盈亏分析：${pnl.message}</div>`;
+    html += `<div class="insight-info" style="margin-top:12px;">${t('csv.pnlMessage', { message: pnl.message })}</div>`;
   }
 
   // Top 交易品种
   if (a.topSymbols?.length) {
     html += `
-      <h3 style="margin-top:12px;">Top 交易品种</h3>
+      <h3 style="margin-top:12px;">${t('csv.topSymbols')}</h3>
       <div style="display:flex;flex-wrap:wrap;gap:4px;">
-        ${a.topSymbols.slice(0, 5).map(s => `<span class="ai-pattern">${s.symbol} (${s.trades}笔)</span>`).join('')}
+        ${a.topSymbols.slice(0, 5).map(s => `<span class="ai-pattern">${s.symbol} (${s.trades} ${t('csv.trades')})</span>`).join('')}
       </div>
     `;
   }
@@ -376,27 +379,35 @@ function renderCSVAnalysis(a) {
 
 // 格式化持仓时间显示
 function formatHoldTime(hours) {
-  if (hours < 1) return `${Math.round(hours * 60)}分`;
-  if (hours < 24) return `${hours.toFixed(1)}小时`;
-  if (hours < 24 * 30) return `${(hours / 24).toFixed(1)}天`;
-  return `${(hours / 24 / 30).toFixed(1)}月`;
+  if (hours < 1) return t('time.minutes', { n: Math.round(hours * 60) });
+  if (hours < 24) return t('time.hours', { n: hours.toFixed(1) });
+  if (hours < 24 * 30) return t('time.days', { n: (hours / 24).toFixed(1) });
+  return t('time.months', { n: (hours / 24 / 30).toFixed(1) });
 }
 
 function renderCSVTransactions(txs) {
   const tbody = document.getElementById('csvTbody');
   if (!txs?.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="muted">暂无数据</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="8" class="muted">${t('common.noData')}</td></tr>`;
     return;
   }
 
-  const marketLabels = { crypto: '加密', a_share: 'A股', us_stock: '美股', hk_stock: '港股', forex: '外汇', futures: '期货', other: '其他' };
+  const marketLabels = {
+    crypto: t('marketLabels.crypto'),
+    a_share: t('marketLabels.a_share'),
+    us_stock: t('marketLabels.us_stock'),
+    hk_stock: t('marketLabels.hk_stock'),
+    forex: t('marketLabels.forex'),
+    futures: t('marketLabels.futures'),
+    other: t('marketLabels.other'),
+  };
 
   tbody.innerHTML = txs.slice(0, 50).map(tx => `
     <tr>
       <td>${tx.timestamp ? new Date(tx.timestamp).toLocaleString() : tx.rawTime || '-'}</td>
       <td>${tx.symbol || tx.ticker || '-'}${tx.assetName ? ` <small>${tx.assetName}</small>` : ''}</td>
       <td><span class="badge">${marketLabels[tx.marketType || tx.market_type] || '-'}</span></td>
-      <td><span class="badge badge-${tx.isBuy || tx.is_buy ? 'allow' : 'block'}">${tx.isBuy || tx.is_buy ? '买入' : '卖出'}</span></td>
+      <td><span class="badge badge-${tx.isBuy || tx.is_buy ? 'allow' : 'block'}">${tx.isBuy || tx.is_buy ? t('csv.buy') : t('csv.sell')}</span></td>
       <td>${tx.price?.toFixed(2) || '-'}</td>
       <td>${tx.qty?.toFixed(4) || '-'}</td>
       <td>${tx.total?.toFixed(2) || '-'}</td>
@@ -410,14 +421,14 @@ document.getElementById('importFileBtn')?.addEventListener('click', importFile);
 // ==================== AI 分析买卖点 ====================
 async function aiAnalyzeTrades() {
   if (!currentTransactions?.length) {
-    alert('请先导入交易记录');
+    alert(t('csv.importFirst'));
     return;
   }
 
   const card = document.getElementById('aiAnalysisCard');
   const resultEl = document.getElementById('aiAnalysisResult');
   card.style.display = 'block';
-  resultEl.innerHTML = '<div class="loading">AI 正在分析买卖点，请稍候</div>';
+  resultEl.innerHTML = `<div class="loading">${t('csv.aiAnalyzing')}</div>`;
 
   // 禁用按钮
   const btn = document.getElementById('aiAnalyzeBtn');
@@ -427,7 +438,7 @@ async function aiAnalyzeTrades() {
     const result = await window.oracleDesktop.aiAnalyzeTrades(currentTransactions);
     renderAIAnalysis(result);
   } catch (err) {
-    resultEl.innerHTML = `<p class="error">AI 分析失败: ${err.message}</p>`;
+    resultEl.innerHTML = `<p class="error">${t('csv.aiFailed')}: ${err.message}</p>`;
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -437,7 +448,7 @@ function renderAIAnalysis(data) {
   const el = document.getElementById('aiAnalysisResult');
 
   if (!data || data.error) {
-    el.innerHTML = `<p class="error">${data?.error || 'AI 分析失败'}</p>`;
+    el.innerHTML = `<p class="error">${data?.error || t('csv.aiFailed')}</p>`;
     return;
   }
 
@@ -445,12 +456,12 @@ function renderAIAnalysis(data) {
 
   // 总结
   if (data.summary) {
-    html += `<div class="ai-section"><h4>📝 分析总结</h4><div class="ai-summary">${data.summary}</div></div>`;
+    html += `<div class="ai-section"><h4>${t('csv.aiSummary')}</h4><div class="ai-summary">${data.summary}</div></div>`;
   }
 
   // 买入点
   if (data.buyPoints?.length) {
-    html += '<div class="ai-section"><h4>🟢 买入点分析</h4>';
+    html += `<div class="ai-section"><h4>${t('csv.aiBuyPoints')}</h4>`;
     data.buyPoints.forEach(p => {
       html += `<div class="ai-point buy">
         <div class="point-time">${p.time || ''} · ${p.symbol || ''} · ¥${p.price || ''}</div>
@@ -462,7 +473,7 @@ function renderAIAnalysis(data) {
 
   // 卖出点
   if (data.sellPoints?.length) {
-    html += '<div class="ai-section"><h4>🔴 卖出点分析</h4>';
+    html += `<div class="ai-section"><h4>${t('csv.aiSellPoints')}</h4>`;
     data.sellPoints.forEach(p => {
       html += `<div class="ai-point sell">
         <div class="point-time">${p.time || ''} · ${p.symbol || ''} · ¥${p.price || ''}</div>
@@ -474,22 +485,22 @@ function renderAIAnalysis(data) {
 
   // 交易模式
   if (data.tradingPatterns?.length) {
-    html += `<div class="ai-section"><h4>🔍 识别的交易模式</h4><div>${data.tradingPatterns.map(p => `<span class="ai-pattern">${p}</span>`).join('')}</div></div>`;
+    html += `<div class="ai-section"><h4>${t('csv.aiPatterns')}</h4><div>${data.tradingPatterns.map(p => `<span class="ai-pattern">${p}</span>`).join('')}</div></div>`;
   }
 
   // 风险评估
   if (data.riskAssessment) {
-    html += `<div class="ai-section"><h4>⚠️ 风险评估</h4><div class="insight-warning">${data.riskAssessment}</div></div>`;
+    html += `<div class="ai-section"><h4>${t('csv.aiRisk')}</h4><div class="insight-warning">${data.riskAssessment}</div></div>`;
   }
 
   // 建议
   if (data.suggestions?.length) {
-    html += `<div class="ai-section"><h4>💡 改进建议</h4>${data.suggestions.map(s => `<div class="ai-suggestion">${s}</div>`).join('')}</div>`;
+    html += `<div class="ai-section"><h4>${t('csv.aiSuggestions')}</h4>${data.suggestions.map(s => `<div class="ai-suggestion">${s}</div>`).join('')}</div>`;
   }
 
   // 原始内容（降级情况）
   if (data.rawContent) {
-    html += `<div class="ai-section"><h4>📄 原始分析</h4><pre style="white-space:pre-wrap;color:#8b949e;font-size:12px;">${data.rawContent.slice(0, 1000)}</pre></div>`;
+    html += `<div class="ai-section"><h4>${t('csv.aiRawContent')}</h4><pre style="white-space:pre-wrap;color:#8b949e;font-size:12px;">${data.rawContent.slice(0, 1000)}</pre></div>`;
   }
 
   html += '</div>';
@@ -502,7 +513,7 @@ document.getElementById('aiAnalyzeBtn')?.addEventListener('click', aiAnalyzeTrad
 async function exportReport() {
   const analysis = window.currentAnalysis;
   if (!analysis) {
-    alert('没有可导出的分析数据');
+    alert(t('csv.noExportData'));
     return;
   }
 
@@ -519,67 +530,75 @@ async function exportReport() {
 function generateReport(analysis) {
   const stats = analysis.stats || {};
   const pnl = analysis.pnl;
-  const marketLabels = { crypto: '加密货币', a_share: 'A股', us_stock: '美股', hk_stock: '港股', forex: '外汇', futures: '期货', other: '其他' };
+  const marketLabels = {
+    crypto: t('marketLabelsFull.crypto'),
+    a_share: t('marketLabelsFull.a_share'),
+    us_stock: t('marketLabelsFull.us_stock'),
+    hk_stock: t('marketLabelsFull.hk_stock'),
+    forex: t('marketLabelsFull.forex'),
+    futures: t('marketLabelsFull.futures'),
+    other: t('marketLabelsFull.other'),
+  };
 
-  let report = `# Oracle-X 交易分析报告
+  let report = `# ${t('report.title')}
 
-生成: ${new Date().toLocaleString()}
+${t('report.generated')}: ${new Date().toLocaleString()}
 
-风格: ${analysis.style} | 风险: ${analysis.riskLevel}
+${t('report.style')}: ${analysis.style} | ${t('report.risk')}: ${analysis.riskLevel}
 
-交易: ${stats.totalTrades}笔 | 金额: ${stats.totalVolume?.toFixed(2)} | 标的: ${stats.uniqueSymbols}
+${t('report.tradesCount')}: ${stats.totalTrades} | ${t('report.amount')}: ${stats.totalVolume?.toFixed(2)} | ${t('report.symbolsCount')}: ${stats.uniqueSymbols}
 `;
 
   // 盈亏分析
   if (pnl?.hasPairs) {
     const sign = pnl.netPnl >= 0 ? '+' : '';
     report += `
-## 盈亏分析
+## ${t('report.pnlTitle')}
 
-- 已实现盈亏: ${sign}${pnl.totalPnl.toFixed(2)}
-- 净盈亏(扣费): ${sign}${pnl.netPnl.toFixed(2)}
-- 盈亏率: ${pnl.pnlPct.toFixed(2)}%
-- 配对数: ${pnl.pairsCount}
+- ${t('report.realizedPnl')}: ${sign}${pnl.totalPnl.toFixed(2)}
+- ${t('report.netPnl')}: ${sign}${pnl.netPnl.toFixed(2)}
+- ${t('report.pnlPct')}: ${pnl.pnlPct.toFixed(2)}%
+- ${t('report.pairsCount')}: ${pnl.pairsCount}
 
-## 胜率与赔率
+## ${t('report.winRateTitle')}
 
-- 胜率: ${pnl.winRate.toFixed(1)}%
-- 盈利/亏损笔数: ${pnl.wins}/${pnl.losses}
-- 平均盈利: ${pnl.avgWin.toFixed(2)}
-- 平均亏损: ${pnl.avgLoss.toFixed(2)}
-- 盈亏比: ${pnl.profitFactor === Infinity ? '∞' : pnl.profitFactor.toFixed(2)}
-- 最大连胜: ${pnl.streaks.maxWinStreak}
-- 最大连败: ${pnl.streaks.maxLossStreak}
+- ${t('report.winRate')}: ${pnl.winRate.toFixed(1)}%
+- ${t('report.winLossCount')}: ${pnl.wins}/${pnl.losses}
+- ${t('report.avgWin')}: ${pnl.avgWin.toFixed(2)}
+- ${t('report.avgLoss')}: ${pnl.avgLoss.toFixed(2)}
+- ${t('report.profitFactor')}: ${pnl.profitFactor === Infinity ? '∞' : pnl.profitFactor.toFixed(2)}
+- ${t('report.maxWinStreak')}: ${pnl.streaks.maxWinStreak}
+- ${t('report.maxLossStreak')}: ${pnl.streaks.maxLossStreak}
 
-## 持仓周期
+## ${t('report.holdTitle')}
 
-- 平均持仓: ${formatHoldTime(pnl.holdPeriod.avgHours)}
-- 日内: ${pnl.holdPeriod.buckets.intraday} | 1-3天: ${pnl.holdPeriod.buckets.short} | 3天-1月: ${pnl.holdPeriod.buckets.medium} | 超1月: ${pnl.holdPeriod.buckets.long}
+- ${t('report.avgHold')}: ${formatHoldTime(pnl.holdPeriod.avgHours)}
+- ${t('csv.intraday')}: ${pnl.holdPeriod.buckets.intraday} | ${t('csv.shortTerm')}: ${pnl.holdPeriod.buckets.short} | ${t('csv.mediumTerm')}: ${pnl.holdPeriod.buckets.medium} | ${t('csv.longTerm')}: ${pnl.holdPeriod.buckets.long}
 
-## 仓位管理
+## ${t('report.positionTitle')}
 
-- 单笔最大占比: ${pnl.positionSizing.maxTradeRatio.toFixed(1)}%
-- 单标的最大占比: ${pnl.positionSizing.maxSymbolRatio.toFixed(1)}%
-- 手续费占交易额: ${pnl.costEfficiency.feeToVolumeRatio.toFixed(3)}%
+- ${t('report.maxTradeRatio')}: ${pnl.positionSizing.maxTradeRatio.toFixed(1)}%
+- ${t('report.maxSymbolRatio')}: ${pnl.positionSizing.maxSymbolRatio.toFixed(1)}%
+- ${t('report.feeRatio')}: ${pnl.costEfficiency.feeToVolumeRatio.toFixed(3)}%
 `;
   }
 
   // 市场分布
   if (analysis.marketTypeBreakdown && Object.keys(analysis.marketTypeBreakdown).length > 0) {
-    report += '\n## 市场分布\n';
+    report += `\n## ${t('report.marketDistribution')}\n`;
     for (const [mt, count] of Object.entries(analysis.marketTypeBreakdown)) {
-      report += `- ${marketLabels[mt] || mt}: ${count}笔\n`;
+      report += `- ${marketLabels[mt] || mt}: ${count} ${t('csv.trades')}\n`;
     }
   }
 
   if (analysis.topSymbols?.length) {
-    report += '\n## Top 交易标的\n' + analysis.topSymbols.map(s =>
-      `- ${s.symbol} [${marketLabels[s.marketType] || ''}]: ${s.trades}笔, ${s.volume?.toFixed(2)}`
+    report += `\n## ${t('report.topSymbols')}\n` + analysis.topSymbols.map(s =>
+      `- ${s.symbol} [${marketLabels[s.marketType] || ''}]: ${s.trades} ${t('csv.trades')}, ${s.volume?.toFixed(2)}`
     ).join('\n');
   }
 
   if (analysis.insights?.length) {
-    report += '\n\n## 洞察\n' + analysis.insights.map(i => `- [${i.type}] ${i.text}`).join('\n');
+    report += `\n\n## ${t('report.insights')}\n` + analysis.insights.map(i => `- [${i.type}] ${i.text}`).join('\n');
   }
 
   return report;
@@ -595,11 +614,11 @@ async function refreshLogs() {
     if (!el) return;
 
     if (!items?.length) {
-      el.innerHTML = '<p class="muted">暂无阻断记录</p>';
+      el.innerHTML = `<p class="muted">${t('monitor.decisionLogEmpty')}</p>`;
       return;
     }
 
-    const actionLabels = { block: '阻断', warn: '警告', allow: '放行' };
+    const actionLabels = { block: t('monitor.actionBlock'), warn: t('monitor.actionWarn'), allow: t('monitor.actionAllow') };
     el.innerHTML = items.map(log => {
       const time = log.created_at ? new Date(log.created_at).toLocaleString() : '-';
       const badge = log.action === 'block' ? 'block' : log.action === 'warn' ? 'warn' : 'allow';
@@ -622,12 +641,12 @@ async function loadImportHistory() {
     const select = document.getElementById('importHistorySelect');
     if (!select) return;
 
-    select.innerHTML = '<option value="">-- 选择历史批次 --</option>';
+    select.innerHTML = `<option value="">${t('csv.historySelect')}</option>`;
     for (const batch of history) {
-      const time = batch.imported_at ? new Date(batch.imported_at).toLocaleString() : '未知';
+      const time = batch.imported_at ? new Date(batch.imported_at).toLocaleString() : t('common.unknown');
       const option = document.createElement('option');
       option.value = batch.import_batch;
-      option.textContent = `${batch.exchange || '未知'} · ${batch.count} 笔 · ${time}`;
+      option.textContent = `${batch.exchange || t('common.unknown')} · ${batch.count} ${t('csv.trades')} · ${time}`;
       select.appendChild(option);
     }
   } catch (err) {
@@ -638,15 +657,15 @@ async function loadImportHistory() {
 async function loadHistoryBatch() {
   const select = document.getElementById('importHistorySelect');
   const batchId = select?.value;
-  if (!batchId) { alert('请选择一个批次'); return; }
+  if (!batchId) { alert(t('csv.selectBatch')); return; }
 
   const infoEl = document.getElementById('importHistoryInfo');
-  infoEl.innerHTML = '<div class="loading">加载中</div>';
+  infoEl.innerHTML = `<div class="loading">${t('common.loading')}</div>`;
 
   try {
     const txs = await window.oracleDesktop.getTransactionsByBatch(batchId);
     currentTransactions = txs;
-    infoEl.innerHTML = `<span class="success">✅ 已加载 ${txs.length} 笔历史记录</span>`;
+    infoEl.innerHTML = `<span class="success">${t('csv.historyLoaded', { count: txs.length })}</span>`;
 
     // 启用 AI 分析按钮
     const aiBtn = document.getElementById('aiAnalyzeBtn');
@@ -654,7 +673,7 @@ async function loadHistoryBatch() {
 
     renderCSVTransactions(txs);
   } catch (err) {
-    infoEl.innerHTML = `<span class="error">加载失败: ${err.message}</span>`;
+    infoEl.innerHTML = `<span class="error">${t('common.loadFailed')}: ${err.message}</span>`;
   }
 }
 
@@ -702,11 +721,11 @@ document.getElementById('sidePanelClose')?.addEventListener('click', closeSidePa
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSidePanel(); });
 
 function showSidePanelLoading() {
-  document.getElementById('sidePanelTitle').textContent = '🔍 AI 正在分析...';
+  document.getElementById('sidePanelTitle').textContent = t('sidePanel.loadingTitle');
   document.getElementById('sidePanelBody').innerHTML = `
     <div style="text-align:center;padding:40px 0;">
-      <div class="loading">截图已捕获，AI 正在识别交易界面...</div>
-      <p style="color:#6e7681;font-size:12px;margin-top:16px;">分析通常需要 3-5 秒</p>
+      <div class="loading">${t('sidePanel.loading')}</div>
+      <p style="color:#6e7681;font-size:12px;margin-top:16px;">${t('sidePanel.loadingHint')}</p>
     </div>`;
   document.getElementById('sidePanelActions').style.display = 'none';
   openSidePanel();
@@ -715,35 +734,35 @@ function showSidePanelLoading() {
 function renderSidePanelResult(result) {
   const action = result?.action || 'allow';
   const risk = result?.riskLevel || 'low';
-  const platform = result?.platform || '未识别';
+  const platform = result?.platform || t('sidePanel.unidentified');
   const buttons = result?.buttons || [];
   const hasTrade = result?.hasTradingButtons || false;
   const summary = result?.summary || '';
 
   const rc = {
-    high: { bg: '#3a1a1a', border: '#dc2626', text: '#f87171', emoji: '🔴', label: '高风险' },
-    medium: { bg: '#3a2a1a', border: '#d97706', text: '#fbbf24', emoji: '🟡', label: '中风险' },
-    low: { bg: '#1a3a2a', border: '#16a34a', text: '#4ade80', emoji: '🟢', label: '低风险' },
-  }[risk] || { bg: '#1a3a2a', border: '#16a34a', text: '#4ade80', emoji: '🟢', label: '低风险' };
+    high: { bg: '#3a1a1a', border: '#dc2626', text: '#f87171', emoji: '🔴', label: t('sidePanel.riskHigh') },
+    medium: { bg: '#3a2a1a', border: '#d97706', text: '#fbbf24', emoji: '🟡', label: t('sidePanel.riskMedium') },
+    low: { bg: '#1a3a2a', border: '#16a34a', text: '#4ade80', emoji: '🟢', label: t('sidePanel.riskLow') },
+  }[risk] || { bg: '#1a3a2a', border: '#16a34a', text: '#4ade80', emoji: '🟢', label: t('sidePanel.riskLow') };
 
-  document.getElementById('sidePanelTitle').textContent = `${rc.emoji} 分析结果 — ${rc.label}`;
+  document.getElementById('sidePanelTitle').textContent = t('sidePanel.resultTitle', { emoji: rc.emoji, label: rc.label });
   document.getElementById('sidePanelBody').innerHTML = `
     <div class="analysis-detail-card" style="border:1px solid ${rc.border};background:${rc.bg};">
       <div class="detail-grid">
-        <div class="detail-item"><span class="detail-label">平台识别</span><span class="detail-value">${platform}</span></div>
-        <div class="detail-item"><span class="detail-label">风险等级</span><span class="detail-value" style="color:${rc.text};">${rc.emoji} ${rc.label}</span></div>
-        <div class="detail-item"><span class="detail-label">交易按钮</span><span class="detail-value">${hasTrade ? '✅ 已检测到' : '❌ 未检测到'}</span></div>
-        <div class="detail-item"><span class="detail-label">建议操作</span><span class="detail-value" style="color:${rc.text};">${action === 'block' ? '🛑 建议阻止' : action === 'warn' ? '⚠️ 需注意' : '✅ 可放行'}</span></div>
+        <div class="detail-item"><span class="detail-label">${t('sidePanel.platform')}</span><span class="detail-value">${platform}</span></div>
+        <div class="detail-item"><span class="detail-label">${t('sidePanel.riskLevel')}</span><span class="detail-value" style="color:${rc.text};">${rc.emoji} ${rc.label}</span></div>
+        <div class="detail-item"><span class="detail-label">${t('sidePanel.tradeButtons')}</span><span class="detail-value">${hasTrade ? t('sidePanel.detected') : t('sidePanel.notDetected')}</span></div>
+        <div class="detail-item"><span class="detail-label">${t('sidePanel.suggestedAction')}</span><span class="detail-value" style="color:${rc.text};">${action === 'block' ? t('sidePanel.actionBlock') : action === 'warn' ? t('sidePanel.actionWarn') : t('sidePanel.actionAllow')}</span></div>
       </div>
-      ${buttons.length ? `<div style="margin-bottom:12px;"><span class="detail-label">检测到的交易按钮</span><div class="analysis-buttons-list" style="margin-top:6px;">${buttons.map(b => `<span class="analysis-button-tag">${b}</span>`).join('')}</div></div>` : ''}
+      ${buttons.length ? `<div style="margin-bottom:12px;"><span class="detail-label">${t('sidePanel.detectedButtons')}</span><div class="analysis-buttons-list" style="margin-top:6px;">${buttons.map(b => `<span class="analysis-button-tag">${b}</span>`).join('')}</div></div>` : ''}
     </div>
-    ${summary ? `<div class="card" style="margin:0;"><h2 style="font-size:14px;">💡 AI 建议</h2><p style="color:#8b949e;font-size:13px;line-height:1.6;">${summary}</p></div>` : ''}
+    ${summary ? `<div class="card" style="margin:0;"><h2 style="font-size:14px;">${t('sidePanel.aiSuggestion')}</h2><p style="color:#8b949e;font-size:13px;line-height:1.6;">${summary}</p></div>` : ''}
     <div class="card" style="margin-top:12px;">
-      <h2 style="font-size:14px;">📋 分析详情</h2>
+      <h2 style="font-size:14px;">${t('sidePanel.detailTitle')}</h2>
       <div style="font-size:12px;color:#6e7681;">
-        <div style="margin-bottom:4px;">时间：${new Date().toLocaleString()}</div>
-        <div style="margin-bottom:4px;">分析引擎：MiniMax-M2.5-highspeed</div>
-        <div>截图已自动删除（隐私保护）</div>
+        <div style="margin-bottom:4px;">${t('sidePanel.detailTime', { time: new Date().toLocaleString() })}</div>
+        <div style="margin-bottom:4px;">${t('sidePanel.detailEngine')}</div>
+        <div>${t('sidePanel.detailPrivacy')}</div>
       </div>
     </div>`;
   document.getElementById('sidePanelActions').style.display = (action === 'block' || action === 'warn') ? 'flex' : 'none';
@@ -752,11 +771,11 @@ function renderSidePanelResult(result) {
 
 // 侧边栏操作按钮
 document.getElementById('sidePanelBlock')?.addEventListener('click', () => {
-  pushNotification('🛑 交易已取消', '您选择了取消本次交易操作', 'warning');
+  pushNotification(t('notification.tradeCancelled'), t('notification.tradeCancelledBody'), 'warning');
   closeSidePanel();
 });
 document.getElementById('sidePanelAllow')?.addEventListener('click', () => {
-  pushNotification('✅ 交易已放行', '请注意风险管理', 'success');
+  pushNotification(t('notification.tradeAllowed'), t('notification.tradeAllowedBody'), 'success');
   closeSidePanel();
 });
 
@@ -764,22 +783,22 @@ document.getElementById('sidePanelAllow')?.addEventListener('click', () => {
 document.getElementById('screenshotBtn')?.addEventListener('click', async () => {
   const btn = document.getElementById('screenshotBtn');
   btn.disabled = true;
-  btn.textContent = '⏳ 截图中...';
+  btn.textContent = t('monitor.screenshotting');
   showSidePanelLoading();
-  pushNotification('📸 截图中', '正在截取屏幕...', 'info', 3000);
+  pushNotification(t('notification.screenshotting'), t('notification.screenshottingBody'), 'info', 3000);
 
   try {
     const result = await window.oracleDesktop.takeScreenshot();
     if (!result) {
       closeSidePanel();
-      pushNotification('❌ 截图失败', '请检查屏幕录制权限', 'error');
+      pushNotification(t('notification.screenshotFailed'), t('notification.screenshotFailedBody'), 'error');
     }
   } catch (err) {
     closeSidePanel();
-    pushNotification('❌ 错误', err.message, 'error');
+    pushNotification(t('notification.analysisError'), err.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '📸 立即截图分析';
+    btn.textContent = t('monitor.screenshotBtn');
   }
 });
 
@@ -787,7 +806,7 @@ document.getElementById('screenshotBtn')?.addEventListener('click', async () => 
 if (window.oracleDesktop.onScreenshotCaptured) {
   window.oracleDesktop.onScreenshotCaptured(() => {
     showSidePanelLoading();
-    pushNotification('📸 截图成功', 'AI 正在分析中...', 'info', 4000);
+    pushNotification(t('notification.screenshotSuccess'), t('notification.screenshotSuccessBody'), 'info', 4000);
   });
 }
 
@@ -798,11 +817,11 @@ if (window.oracleDesktop.onScreenshotResult) {
     addAnalysisLog(result);
     updateStats(result);
     const risk = result?.riskLevel || 'low';
-    const label = risk === 'high' ? '高风险' : risk === 'medium' ? '中风险' : '低风险';
+    const label = risk === 'high' ? t('sidePanel.riskHigh') : risk === 'medium' ? t('sidePanel.riskMedium') : t('sidePanel.riskLow');
     const emoji = risk === 'high' ? '🔴' : risk === 'medium' ? '🟡' : '🟢';
     const type = risk === 'high' ? 'error' : risk === 'medium' ? 'warning' : 'success';
-    pushNotification(`${emoji} ${label} · ${result?.platform || '未识别'}`,
-      result?.action === 'block' ? '建议取消本次交易' : '当前操作安全', type, 6000);
+    pushNotification(`${emoji} ${label} · ${result?.platform || t('sidePanel.unidentified')}`,
+      result?.action === 'block' ? t('notification.suggestCancel') : t('notification.safeOperation'), type, 6000);
   });
 }
 
@@ -810,7 +829,7 @@ if (window.oracleDesktop.onScreenshotResult) {
 if (window.oracleDesktop.onScreenshotError) {
   window.oracleDesktop.onScreenshotError((data) => {
     closeSidePanel();
-    pushNotification('❌ 分析失败', data?.error || '未知错误', 'error');
+    pushNotification(t('notification.analysisFailed'), data?.error || t('common.error'), 'error');
   });
 }
 
@@ -821,8 +840,8 @@ function addAnalysisLog(result) {
 
   const risk = result?.riskLevel || 'low';
   const emoji = risk === 'high' ? '🔴' : risk === 'medium' ? '🟡' : '🟢';
-  const label = risk === 'high' ? '高风险' : risk === 'medium' ? '中风险' : '低风险';
-  const platform = result?.platform || '未识别';
+  const label = risk === 'high' ? t('sidePanel.riskHigh') : risk === 'medium' ? t('sidePanel.riskMedium') : t('sidePanel.riskLow');
+  const platform = result?.platform || t('sidePanel.unidentified');
   const time = new Date().toLocaleTimeString();
   const action = result?.action || 'allow';
 
@@ -833,8 +852,8 @@ function addAnalysisLog(result) {
       <span>${emoji} <strong>${label}</strong> · ${platform}</span>
       <span style="color:#8b949e;font-size:11px;">${time}</span>
     </div>
-    ${result?.buttons?.length ? `<div style="color:#8b949e;font-size:11px;margin-top:4px;">按钮: ${result.buttons.join(', ')}</div>` : ''}
-    <div style="color:${action === 'block' ? '#f87171' : '#8b949e'};font-size:11px;margin-top:2px;">→ ${action === 'block' ? '已阻止' : action === 'warn' ? '已警告' : '已放行'}</div>`;
+    ${result?.buttons?.length ? `<div style="color:#8b949e;font-size:11px;margin-top:4px;">${t('monitor.buttons')}: ${result.buttons.join(', ')}</div>` : ''}
+    <div style="color:${action === 'block' ? '#f87171' : '#8b949e'};font-size:11px;margin-top:2px;">→ ${action === 'block' ? t('monitor.blocked') : action === 'warn' ? t('monitor.warned') : t('monitor.allowed')}</div>`;
   entry.addEventListener('click', () => renderSidePanelResult(result));
   entry.addEventListener('mouseenter', () => entry.style.background = 'rgba(255,255,255,0.08)');
   entry.addEventListener('mouseleave', () => entry.style.background = 'rgba(255,255,255,0.04)');

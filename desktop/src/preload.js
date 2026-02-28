@@ -55,5 +55,8 @@ contextBridge.exposeInMainWorld('oracleDesktop', {
   checkPermissions: () => ipcRenderer.invoke('checkPermissions'),
   toggleAutoMonitor: (enable) => ipcRenderer.invoke('toggleAutoMonitor', enable),
 
+  // i18n
+  setLocale: (lang) => ipcRenderer.invoke('setLocale', lang),
+
   platform: process.platform,
 });

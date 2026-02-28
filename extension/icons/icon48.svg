@@ -1,10 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
   <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#667eea"/>
-      <stop offset="100%" style="stop-color:#764ba2"/>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#667eea"/>
+      <stop offset="100%" stop-color="#764ba2"/>
     </linearGradient>
+    <linearGradient id="eyeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#667eea"/>
+    </linearGradient>
+    <linearGradient id="pulseGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#c4b5fd"/>
+      <stop offset="50%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#c4b5fd"/>
+    </linearGradient>
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e0e7ff" stop-opacity="0.9"/>
+      <stop offset="60%" stop-color="#a78bfa" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#667eea" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <circle cx="24" cy="24" r="22" fill="url(#g)"/>
-  <text x="24" y="32" font-size="24" text-anchor="middle" fill="white">🔮</text>
+  <!-- Background circle -->
+  <circle cx="24" cy="24" r="22.5" fill="url(#bgGrad)"/>
+  <!-- Inner eye fill -->
+  <path d="M 9 24 Q 24 13, 39 24 Q 24 35, 9 24 Z" fill="rgba(255,255,255,0.08)"/>
+  <!-- Iris circle -->
+  <circle cx="24" cy="24" r="7.5" fill="url(#eyeGrad)" opacity="0.9"/>
+  <!-- Core glow -->
+  <circle cx="24" cy="24" r="4.5" fill="url(#coreGlow)"/>
+  <!-- Pupil -->
+  <circle cx="24" cy="24" r="2.2" fill="#1e1b4b" opacity="0.8"/>
+  <!-- Highlight -->
+  <circle cx="22" cy="22" r="1.2" fill="white" opacity="0.7"/>
+  <!-- K-line pulse wave -->
+  <polyline points="8,24 14,24 16.5,19.5 19,27 21.5,18 24,28.5 26.5,16.5 29,26 31.5,21 34,24 40,24"
+    fill="none" stroke="url(#pulseGrad)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
 </svg>

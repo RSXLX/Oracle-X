@@ -4,10 +4,20 @@
  */
 
 const { Notification } = require('electron');
+const { I18nMain } = require('../i18n-main');
+
+const i18n = new I18nMain();
 
 class NotificationManager {
   constructor() {
     this.enabled = true;
+  }
+
+  /**
+   * 设置语言
+   */
+  setLocale(lang) {
+    i18n.setLocale(lang);
   }
 
   /**
@@ -17,8 +27,8 @@ class NotificationManager {
     if (!this.enabled || !Notification.isSupported()) return;
 
     const notification = new Notification({
-      title: '⚠️ Oracle-X 警告',
-      body: `检测到您正在 ${appName} 交易${buttons.length ? `\n按钮: ${buttons.join(', ')}` : ''}`,
+      title: i18n.t('dialog.tradeWarningTitle'),
+      body: i18n.t('dialog.tradeWarningBody', { app: appName }) + (buttons.length ? `\n${i18n.t('monitor.buttons')}: ${buttons.join(', ')}` : ''),
       urgency: 'critical',
       timeoutType: 'never',
     });
@@ -34,8 +44,8 @@ class NotificationManager {
     if (!this.enabled || !Notification.isSupported()) return;
 
     const notification = new Notification({
-      title: '✅ 风险化解',
-      body: '您成功避免了 FOMO 交易！保持理性 💪',
+      title: i18n.t('dialog.riskMitigatedTitle'),
+      body: i18n.t('dialog.riskMitigatedBody'),
     });
 
     notification.show();
@@ -48,8 +58,8 @@ class NotificationManager {
     if (!this.enabled || !Notification.isSupported()) return;
 
     const notification = new Notification({
-      title: '📊 今日 Oracle-X 统计',
-      body: `阻断: ${stats.blocks || 0} 次 | 风险化解: ${stats.mitigated || 0} 次`,
+      title: i18n.t('dialog.dailySummaryTitle'),
+      body: i18n.t('dialog.dailySummaryBody', { blocks: stats.blocks || 0, mitigated: stats.mitigated || 0 }),
     });
 
     notification.show();
