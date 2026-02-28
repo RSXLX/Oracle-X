@@ -54,23 +54,23 @@ function loadEnvConfig() {
 const envConfig = loadEnvConfig();
 
 // 模块导入
-const Database = require('./database');
-const { GlobalAppMonitor, MONITOR_MODES } = require('./monitor');
-const { ScreenshotAnalyzer } = require('./screenshot-analyzer');
-const { TrayManager } = require('./tray-manager');
-const { AutoStartManager } = require('./auto-start');
-const { NotificationManager } = require('./notification-manager');
-const { WalletAnalyzer } = require('./wallet-analyzer');
-const { EnhancedCSVImporter } = require('./csv-importer');
-const { MarketDataService } = require('./market-data');
-const { RiskEngine } = require('./risk-engine');
-const { DataExporter } = require('./data-exporter');
-const { HotkeyManager } = require('./hotkey-manager');
-const { AITradeAnalyzer } = require('./ai-trade-analyzer');
-const { InterceptionEngine } = require('./interception-engine');
-const { SettingsStorage } = require('./settings-storage');
-const { StatsTracker } = require('./stats-tracker');
-const { DecisionLogger } = require('./decision-logger');
+const Database = require('./data/database');
+const { GlobalAppMonitor, MONITOR_MODES } = require('./monitor/monitor');
+const { ScreenshotAnalyzer } = require('./analyzer/screenshot-analyzer');
+const { TrayManager } = require('./system/tray-manager');
+const { AutoStartManager } = require('./system/auto-start');
+const { NotificationManager } = require('./system/notification-manager');
+const { WalletAnalyzer } = require('./analyzer/wallet-analyzer');
+const { EnhancedCSVImporter } = require('./data/csv-importer');
+const { MarketDataService } = require('./data/market-data');
+const { RiskEngine } = require('./analyzer/risk-engine');
+const { DataExporter } = require('./data/data-exporter');
+const { HotkeyManager } = require('./system/hotkey-manager');
+const { AITradeAnalyzer } = require('./analyzer/ai-trade-analyzer');
+const { InterceptionEngine } = require('./core/interception-engine');
+const { SettingsStorage } = require('./data/settings-storage');
+const { StatsTracker } = require('./system/stats-tracker');
+const { DecisionLogger } = require('./data/decision-logger');
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -295,7 +295,7 @@ async function initAll() {
 
   // 只有用户显式开启自动监控时才启动
   if (settings.autoMonitorEnabled && monitor) {
-    const { PermissionManager } = require('./permission-manager');
+    const { PermissionManager } = require('./system/permission-manager');
     const permManager = new PermissionManager();
     const perms = await permManager.checkAll();
 
@@ -336,7 +336,7 @@ function registerHotkeys() {
       if (!fileExists || fileSize === 0) {
         console.log('[Hotkey] Screenshot failed or empty (permission issue?)');
         // 截图失败 → 引导授权
-        const { PermissionManager } = require('./permission-manager');
+        const { PermissionManager } = require('./system/permission-manager');
         const permManager = new PermissionManager();
         await permManager.requestScreenCapture(mainWindow);
         return;
@@ -652,7 +652,7 @@ function setupIPC() {
 
   // ==================== 权限管理 ====================
   ipcMain.handle('checkPermissions', async () => {
-    const { PermissionManager } = require('./permission-manager');
+    const { PermissionManager } = require('./system/permission-manager');
     const permManager = new PermissionManager();
     return permManager.checkAll();
   });
@@ -660,7 +660,7 @@ function setupIPC() {
   ipcMain.handle('toggleAutoMonitor', async (event, enable) => {
     if (enable) {
       // 开启自动监控前检查权限
-      const { PermissionManager } = require('./permission-manager');
+      const { PermissionManager } = require('./system/permission-manager');
       const permManager = new PermissionManager();
       const ready = await permManager.requestForAutoMonitor(mainWindow);
 
@@ -697,7 +697,7 @@ function setupIPC() {
 
     if (!screenshotOk) {
       // 截图失败 → 引导授权
-      const { PermissionManager } = require('./permission-manager');
+      const { PermissionManager } = require('./system/permission-manager');
       const permManager = new PermissionManager();
       await permManager.requestScreenCapture(mainWindow);
       return null;

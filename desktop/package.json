@@ -2,7 +2,7 @@
   "name": "oracle-x-desktop",
   "version": "2.1.0",
   "description": "Oracle-X NoFOMO - AI Trading Assistant",
-  "main": "main.js",
+  "main": "src/main.js",
   "author": "Oracle-X Team",
   "license": "MIT",
   "scripts": {
@@ -63,12 +63,13 @@
       "icon": "icons"
     },
     "files": [
-      "*.js",
+      "src/**/*",
       "renderer/**/*",
       ".env.local"
     ]
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8"
   },

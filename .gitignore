@@ -67,3 +67,7 @@ GIT_SUBMIT_GUIDE.md
 *.tmp
 *.temp
 *.backup
+
+# Data
+data/
+*.jsonl
