@@ -1,15 +1,18 @@
 {
   "name": "oracle-x-desktop",
-  "version": "2.2.0",
+  "version": "0.0.1",
   "description": "Oracle-X NoFOMO - AI Trading Assistant",
   "main": "src/main.js",
   "author": "Oracle-X Team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RSXLX/Oracle-X.git"
+  },
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
-    "build": "electron-builder --mac --x64",
-    "build:mac-arm": "electron-builder --mac --arm64",
+    "build": "electron-builder --mac --publish never",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux"
   },
@@ -22,10 +25,8 @@
     "mac": {
       "category": "public.app-category.finance",
       "target": [
-        "dmg",
-        "dir"
-      ],
-      "icon": "icons/icon.png"
+        "dmg"
+      ]
     },
     "dmg": {
       "title": "Oracle-X NoFOMO",
@@ -46,22 +47,14 @@
     "win": {
       "target": [
         "nsis"
-      ],
-      "icon": "icons/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "icons/icon.png",
-      "uninstallerIcon": "icons/icon.png"
+      ]
     },
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
-      "category": "Finance",
-      "icon": "icons"
+      "category": "Finance"
     },
     "files": [
       "src/**/*",
