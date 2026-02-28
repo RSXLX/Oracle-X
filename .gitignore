@@ -1,68 +1,69 @@
+# =====================
 # Dependencies
+# =====================
 node_modules/
 
-# Testing & Debug
-/tests/
-/test_data/
-/test-api.js
-/coverage
-/scripts/
-jest.config.cjs
+# =====================
+# Build Outputs
+# =====================
+.next/
+out/
+build/
+dist/
+release/
 
-# Next.js build
-/.next/
-/out/
-/build
-/dist
-
-# Desktop build
-desktop/release/
-desktop/node_modules/
-desktop/*.xlsx
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Environment (contains API keys)
+# =====================
+# Environment
+# =====================
 .env
 .env*.local
-desktop/.env.local
 
-# TypeScript cache
-*.tsbuildinfo
-next-env.d.ts
+# =====================
+# Logs & Cache
+# =====================
+*.log
+npm-debug.log*
+.cache/
 
+# =====================
 # IDE
+# =====================
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
 
+# =====================
 # OS
+# =====================
 .DS_Store
 Thumbs.db
-Desktop.ini
 
-# Temporary
+# =====================
+# TypeScript
+# =====================
+*.tsbuildinfo
+next-env.d.ts
+
+# =====================
+# Test & Debug
+# =====================
+/tests/
+/test_data/
+/test-api.js
+coverage/
+jest.config.cjs
+
+# =====================
+# Docs (keep only README)
+# =====================
+docs/
+demo.md
+CONTRIBUTING.md
+GIT_SUBMIT_GUIDE.md
+
+# =====================
+# Temp
+# =====================
 *.tmp
 *.temp
-.cache/
-
-# Backup files
 *.backup
-
-# Runtime data
-/data/
-
-# Draft / internal docs
-/demo.md
-/GIT_SUBMIT_GUIDE.md
-/CONTRIBUTING.md
-docs/
-
-# Test mock pages
-/public/mock-binance.html
