@@ -6,58 +6,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Oracle-X NoFOMO</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- i18n -->
+  <script src="locales/zh-CN.js"></script>
+  <script src="locales/en.js"></script>
+  <script src="i18n.js"></script>
+  <script>
+    I18n.register('zh-CN', zhCN);
+    I18n.register('en', en);
+  </script>
 </head>
 
 <body>
   <main class="app">
     <header>
       <h1>🔮 Oracle-X NoFOMO</h1>
-      <p>全局交易冷静层 · AI 交易分析助手</p>
+      <p data-i18n="header.subtitle">全局交易冷静层 · AI 交易分析助手</p>
     </header>
 
     <!-- 导航 -->
     <nav class="tabs">
-      <button class="tab active" data-tab="monitor">👁️ 监控</button>
-      <button class="tab" data-tab="wallet">💰 钱包</button>
-      <button class="tab" data-tab="csv">📄 交易记录</button>
-      <button class="tab" data-tab="settings">⚙️ 设置</button>
+      <button class="tab active" data-tab="monitor" data-i18n="nav.monitor">👁️ 监控</button>
+      <button class="tab" data-tab="wallet" data-i18n="nav.wallet">💰 钱包</button>
+      <button class="tab" data-tab="csv" data-i18n="nav.csv">📄 交易记录</button>
+      <button class="tab" data-tab="settings" data-i18n="nav.settings">⚙️ 设置</button>
     </nav>
 
     <!-- 监控面板 -->
     <section id="panel-monitor" class="panel active">
       <!-- 快速操作 -->
       <section class="card">
-        <h2>📸 截图分析</h2>
-        <p class="hint">截取当前屏幕，AI 自动识别交易平台和操作按钮并评估风险</p>
+        <h2 data-i18n="monitor.screenshotTitle">📸 截图分析</h2>
+        <p class="hint" data-i18n="monitor.screenshotHint">截取当前屏幕，AI 自动识别交易平台和操作按钮并评估风险</p>
         <div class="actions">
-          <button id="screenshotBtn" class="btn btn-primary">📸 立即截图分析</button>
-          <span class="hint" style="margin-left:8px;">快捷键：Cmd+Shift+S</span>
+          <button id="screenshotBtn" class="btn btn-primary" data-i18n="monitor.screenshotBtn">📸 立即截图分析</button>
+          <span class="hint" style="margin-left:8px;" data-i18n="monitor.screenshotHotkey">快捷键：Cmd+Shift+S</span>
         </div>
         <div id="screenshotStatus"></div>
       </section>
 
       <!-- 分析记录 -->
       <section class="card">
-        <h2>📋 分析记录</h2>
+        <h2 data-i18n="monitor.logTitle">📋 分析记录</h2>
         <div id="screenshotLog">
-          <p class="muted">暂无记录，截图分析后将在此显示</p>
+          <p class="muted" data-i18n="monitor.logEmpty">暂无记录，截图分析后将在此显示</p>
         </div>
       </section>
 
       <!-- 监控设置 -->
       <section class="card">
-        <h2>⚙️ 监控设置</h2>
+        <h2 data-i18n="monitor.settingsTitle">⚙️ 监控设置</h2>
         <div class="form-group">
-          <label>监控模式
+          <label><span data-i18n="monitor.monitorMode">监控模式</span>
             <select id="monitorMode">
-              <option value="manual">手动截图</option>
-              <option value="screenshot">自动截图 AI 分析</option>
-              <option value="accessibility">应用监听</option>
+              <option value="manual" data-i18n="monitor.modeManual">手动截图</option>
+              <option value="screenshot" data-i18n="monitor.modeScreenshot">自动截图 AI 分析</option>
+              <option value="accessibility" data-i18n="monitor.modeAccessibility">应用监听</option>
             </select>
           </label>
         </div>
         <div class="source-section">
-          <h3>监听应用</h3>
+          <h3 data-i18n="monitor.listenApps">监听应用</h3>
           <label class="checkbox"><input type="checkbox" id="app_binance" checked /> Binance</label>
           <label class="checkbox"><input type="checkbox" id="app_okx" checked /> OKX</label>
           <label class="checkbox"><input type="checkbox" id="app_bybit" checked /> Bybit</label>
@@ -67,19 +75,22 @@
 
       <!-- 今日统计 -->
       <section class="card">
-        <h2>📊 今日统计</h2>
+        <h2 data-i18n="monitor.statsTitle">📊 今日统计</h2>
         <div class="stats-grid">
-          <div class="stat"><span class="stat-label">截图分析</span><span class="stat-value" id="todayAnalyses">0</span>
+          <div class="stat"><span class="stat-label" data-i18n="monitor.statAnalyses">截图分析</span><span
+              class="stat-value" id="todayAnalyses">0</span>
           </div>
-          <div class="stat"><span class="stat-label">风险检测</span><span class="stat-value" id="todayBlock">0</span></div>
-          <div class="stat"><span class="stat-label">化解率</span><span class="stat-value" id="mitigationRate">0%</span>
+          <div class="stat"><span class="stat-label" data-i18n="monitor.statRiskDetect">风险检测</span><span
+              class="stat-value" id="todayBlock">0</span></div>
+          <div class="stat"><span class="stat-label" data-i18n="monitor.statMitigationRate">化解率</span><span
+              class="stat-value" id="mitigationRate">0%</span>
           </div>
         </div>
       </section>
       <section class="card">
-        <h2>📋 决策日志</h2>
+        <h2 data-i18n="monitor.decisionLogTitle">📋 决策日志</h2>
         <div id="decisionLogs" class="decision-logs">
-          <p class="muted">暂无阻断记录</p>
+          <p class="muted" data-i18n="monitor.decisionLogEmpty">暂无阻断记录</p>
         </div>
       </section>
     </section>
@@ -87,9 +98,9 @@
     <!-- 钱包面板 -->
     <section id="panel-wallet" class="panel">
       <section class="card">
-        <h2>💰 钱包管理</h2>
+        <h2 data-i18n="wallet.title">💰 钱包管理</h2>
         <div class="form-group">
-          <label>选择链
+          <label><span data-i18n="wallet.selectChain">选择链</span>
             <select id="walletChain">
               <option value="ethereum">Ethereum</option>
               <option value="bsc">BNB Chain (BSC)</option>
@@ -97,55 +108,57 @@
           </label>
         </div>
         <div class="form-group">
-          <label>钱包地址 <input type="text" id="walletAddress" placeholder="0x..." /></label>
+          <label><span data-i18n="wallet.address">钱包地址</span> <input type="text" id="walletAddress"
+              placeholder="0x..." /></label>
         </div>
         <div class="form-group">
-          <label>备注 <input type="text" id="walletLabel" placeholder="如：主钱包" /></label>
+          <label><span data-i18n="wallet.label">备注</span> <input type="text" id="walletLabel"
+              data-i18n="wallet.labelPlaceholder" data-i18n-attr="placeholder" placeholder="如：主钱包" /></label>
         </div>
         <div class="actions">
-          <button id="addWalletBtn" class="btn btn-primary">添加钱包</button>
-          <button id="saveWalletsBtn" class="btn btn-secondary">💾 保存数据</button>
+          <button id="addWalletBtn" class="btn btn-primary" data-i18n="wallet.addBtn">添加钱包</button>
+          <button id="saveWalletsBtn" class="btn btn-secondary" data-i18n="wallet.saveBtn">💾 保存数据</button>
         </div>
       </section>
 
       <section class="card">
-        <h2>📋 已添加钱包</h2>
+        <h2 data-i18n="wallet.listTitle">📋 已添加钱包</h2>
         <div id="walletList" class="wallet-list">
-          <p class="muted">暂无钱包</p>
+          <p class="muted" data-i18n="wallet.noWallet">暂无钱包</p>
         </div>
       </section>
 
       <section class="card">
-        <h2>📊 交易分析</h2>
+        <h2 data-i18n="wallet.analysisTitle">📊 交易分析</h2>
         <div id="walletAnalysis">
-          <p class="muted">选择钱包查看分析</p>
+          <p class="muted" data-i18n="wallet.analysisEmpty">选择钱包查看分析</p>
         </div>
       </section>
 
       <section class="card">
-        <h2>🤖 AI 钱包分析</h2>
+        <h2 data-i18n="wallet.aiTitle">🤖 AI 钱包分析</h2>
         <div id="walletAIAnalysis">
-          <p class="muted">点击钱包的"AI分析"按钮查看 AI 深度分析</p>
+          <p class="muted" data-i18n="wallet.aiHint">点击钱包的"AI分析"按钮查看 AI 深度分析</p>
         </div>
       </section>
 
       <section class="card">
-        <h2>📝 交易记录</h2>
-        <button id="refreshWalletBtn" class="btn btn-secondary">刷新记录</button>
+        <h2 data-i18n="wallet.txTitle">📝 交易记录</h2>
+        <button id="refreshWalletBtn" class="btn btn-secondary" data-i18n="wallet.refreshBtn">刷新记录</button>
         <div class="tableWrap">
           <table>
             <thead>
               <tr>
-                <th>时间</th>
-                <th>类型</th>
-                <th>金额</th>
+                <th data-i18n="wallet.thTime">时间</th>
+                <th data-i18n="wallet.thType">类型</th>
+                <th data-i18n="wallet.thAmount">金额</th>
                 <th>Gas</th>
-                <th>合约方法</th>
+                <th data-i18n="wallet.thMethod">合约方法</th>
               </tr>
             </thead>
             <tbody id="txTbody">
               <tr>
-                <td colspan="5" class="muted">暂无记录</td>
+                <td colspan="5" class="muted" data-i18n="common.noRecord">暂无记录</td>
               </tr>
             </tbody>
           </table>
@@ -156,60 +169,61 @@
     <!-- 交易记录导入面板 -->
     <section id="panel-csv" class="panel">
       <section class="card">
-        <h2>📄 导入交易记录</h2>
-        <p class="hint">支持 CSV / XLSX 格式 · 加密货币交易所 / A股券商 / 美股券商导出文件 · AI 智能表头识别 · 数据自动保存到 MySQL</p>
+        <h2 data-i18n="csv.importTitle">📄 导入交易记录</h2>
+        <p class="hint" data-i18n="csv.importHint">支持 CSV / XLSX 格式 · 加密货币交易所 / A股券商 / 美股券商导出文件 · AI 智能表头识别 · 数据自动保存到
+          MySQL</p>
         <div class="actions">
-          <button id="importFileBtn" class="btn btn-primary">📂 导入 CSV / XLSX</button>
-          <button id="aiAnalyzeBtn" class="btn btn-accent" disabled>🤖 AI 分析买卖点</button>
-          <button id="exportReportBtn" class="btn btn-secondary">📤 导出报告</button>
+          <button id="importFileBtn" class="btn btn-primary" data-i18n="csv.importBtn">📂 导入 CSV / XLSX</button>
+          <button id="aiAnalyzeBtn" class="btn btn-accent" disabled data-i18n="csv.aiAnalyzeBtn">🤖 AI 分析买卖点</button>
+          <button id="exportReportBtn" class="btn btn-secondary" data-i18n="csv.exportBtn">📤 导出报告</button>
         </div>
         <div id="csvStatus"></div>
       </section>
 
       <section class="card">
-        <h2>📚 历史导入记录</h2>
+        <h2 data-i18n="csv.historyTitle">📚 历史导入记录</h2>
         <div class="form-group">
           <select id="importHistorySelect">
-            <option value="">-- 选择历史批次 --</option>
+            <option value="" data-i18n="csv.historySelect">-- 选择历史批次 --</option>
           </select>
-          <button id="loadHistoryBtn" class="btn btn-secondary">加载</button>
+          <button id="loadHistoryBtn" class="btn btn-secondary" data-i18n="csv.historyLoadBtn">加载</button>
         </div>
         <div id="importHistoryInfo" class="muted"></div>
       </section>
 
       <section class="card">
-        <h2>📊 交易习惯分析</h2>
+        <h2 data-i18n="csv.analysisTitle">📊 交易习惯分析</h2>
         <div id="csvAnalysis">
-          <p class="muted">导入文件后显示分析</p>
+          <p class="muted" data-i18n="csv.analysisEmpty">导入文件后显示分析</p>
         </div>
       </section>
 
       <section class="card" id="aiAnalysisCard" style="display:none;">
-        <h2>🤖 AI 买卖点分析</h2>
+        <h2 data-i18n="csv.aiAnalysisTitle">🤖 AI 买卖点分析</h2>
         <div id="aiAnalysisResult">
-          <p class="muted">等待分析...</p>
+          <p class="muted" data-i18n="csv.aiWaiting">等待分析...</p>
         </div>
       </section>
 
       <section class="card">
-        <h2>📝 交易明细</h2>
+        <h2 data-i18n="csv.txTitle">📝 交易明细</h2>
         <div class="tableWrap">
           <table>
             <thead>
               <tr>
-                <th>时间</th>
-                <th>标的</th>
-                <th>市场</th>
-                <th>方向</th>
-                <th>价格</th>
-                <th>数量</th>
-                <th>总额</th>
-                <th>货币</th>
+                <th data-i18n="csv.thTime">时间</th>
+                <th data-i18n="csv.thSymbol">标的</th>
+                <th data-i18n="csv.thMarket">市场</th>
+                <th data-i18n="csv.thSide">方向</th>
+                <th data-i18n="csv.thPrice">价格</th>
+                <th data-i18n="csv.thQty">数量</th>
+                <th data-i18n="csv.thTotal">总额</th>
+                <th data-i18n="csv.thCurrency">货币</th>
               </tr>
             </thead>
             <tbody id="csvTbody">
               <tr>
-                <td colspan="8" class="muted">暂无数据</td>
+                <td colspan="8" class="muted" data-i18n="common.noData">暂无数据</td>
               </tr>
             </tbody>
           </table>
@@ -220,7 +234,7 @@
     <!-- 设置面板 -->
     <section id="panel-settings" class="panel">
       <section class="card">
-        <h2>🤖 AI 配置（已固定）</h2>
+        <h2 data-i18n="settings.aiTitle">🤖 AI 配置（已固定）</h2>
         <div class="ai-config-info">
           <div class="config-item"><span class="config-label">Provider</span><span class="config-value">MiniMax</span>
           </div>
@@ -228,32 +242,52 @@
               class="config-value">MiniMax-M2.5-highspeed</span></div>
           <div class="config-item"><span class="config-label">API</span><span class="config-value">OpenAI
               Completions</span></div>
-          <div class="config-item"><span class="config-label">状态</span><span class="config-value badge-allow">✅
+          <div class="config-item"><span class="config-label" data-i18n="settings.status">状态</span><span
+              class="config-value badge-allow" data-i18n="settings.statusOk">✅
               已配置</span></div>
         </div>
       </section>
       <section class="card">
-        <h2>⚙️ 冷静设置</h2>
+        <h2 data-i18n="settings.cooldownTitle">⚙️ 冷静设置</h2>
         <div class="form-group">
-          <label>冷静时间 <input type="number" id="cooldown" value="5" min="0" max="60" /> 秒</label>
+          <label><span data-i18n="settings.cooldown">冷静时间</span> <input type="number" id="cooldown" value="5" min="0"
+              max="60" /> <span data-i18n="settings.cooldownUnit">秒</span></label>
         </div>
-        <label class="checkbox"><input type="checkbox" id="enableBlock" checked /> 启用阻断</label>
-        <label class="checkbox"><input type="checkbox" id="autoStart" /> 开机自启</label>
+        <label class="checkbox"><input type="checkbox" id="enableBlock" checked /> <span
+            data-i18n="settings.enableBlock">启用阻断</span></label>
+        <label class="checkbox"><input type="checkbox" id="autoStart" /> <span
+            data-i18n="settings.autoStart">开机自启</span></label>
       </section>
       <section class="card">
-        <h2>🔗 区块链数据源</h2>
+        <h2 data-i18n="settings.blockchainTitle">🔗 区块链数据源</h2>
         <div class="ai-config-info">
-          <div class="config-item"><span class="config-label">ETH 数据源</span><span class="config-value">Blockscout V2
+          <div class="config-item"><span class="config-label" data-i18n="settings.ethSource">ETH 数据源</span><span
+              class="config-value">Blockscout V2
               API</span></div>
-          <div class="config-item"><span class="config-label">BSC 数据源</span><span class="config-value">Blockscout V2
+          <div class="config-item"><span class="config-label" data-i18n="settings.bscSource">BSC 数据源</span><span
+              class="config-value">Blockscout V2
               API</span></div>
-          <div class="config-item"><span class="config-label">API Key</span><span class="config-value badge-allow">✅
+          <div class="config-item"><span class="config-label">API Key</span><span class="config-value badge-allow"
+              data-i18n="settings.apiKeyFree">✅
               免费，无需配置</span></div>
-          <div class="config-item"><span class="config-label">备用</span><span class="config-value">RPC 扫描兜底</span></div>
+          <div class="config-item"><span class="config-label" data-i18n="settings.backup">备用</span><span
+              class="config-value" data-i18n="settings.backupValue">RPC 扫描兜底</span></div>
+        </div>
+      </section>
+      <!-- 语言设置 -->
+      <section class="card">
+        <h2 data-i18n="settings.langTitle">🌐 语言 / Language</h2>
+        <div class="form-group">
+          <label><span data-i18n="settings.langLabel">界面语言</span>
+            <select id="langSelect">
+              <option value="zh-CN">中文</option>
+              <option value="en">English</option>
+            </select>
+          </label>
         </div>
       </section>
       <section class="actions">
-        <button id="saveBtn" class="btn btn-primary">保存配置</button>
+        <button id="saveBtn" class="btn btn-primary" data-i18n="settings.saveBtn">保存配置</button>
       </section>
     </section>
   </main>
@@ -262,15 +296,15 @@
   <div class="side-panel-overlay" id="sidePanelOverlay"></div>
   <div class="side-panel" id="sidePanel">
     <div class="side-panel-header">
-      <h2 id="sidePanelTitle">🔍 AI 分析</h2>
+      <h2 id="sidePanelTitle" data-i18n="sidePanel.title">🔍 AI 分析</h2>
       <button class="side-panel-close" id="sidePanelClose">✕</button>
     </div>
     <div class="side-panel-body" id="sidePanelBody">
-      <div class="loading">等待分析...</div>
+      <div class="loading" data-i18n="csv.aiWaiting">等待分析...</div>
     </div>
     <div class="side-panel-actions" id="sidePanelActions" style="display:none;">
-      <button class="btn btn-accent" id="sidePanelBlock">🛑 取消交易</button>
-      <button class="btn btn-secondary" id="sidePanelAllow">✅ 继续交易</button>
+      <button class="btn btn-accent" id="sidePanelBlock" data-i18n="sidePanel.cancelTrade">🛑 取消交易</button>
+      <button class="btn btn-secondary" id="sidePanelAllow" data-i18n="sidePanel.continueTrade">✅ 继续交易</button>
     </div>
   </div>
 
@@ -278,6 +312,22 @@
   <div class="notification-stack" id="notificationStack"></div>
 
   <script src="renderer.js"></script>
+  <script>
+    // 初始化 i18n（在 renderer.js 之后，确保 DOM 已就绪）
+    I18n.init();
+    // 语言切换
+    const langSelect = document.getElementById('langSelect');
+    if (langSelect) {
+      langSelect.value = I18n.getLocale();
+      langSelect.addEventListener('change', (e) => {
+        I18n.setLocale(e.target.value);
+        // 通知后端切换语言
+        if (window.oracleDesktop && window.oracleDesktop.setLocale) {
+          window.oracleDesktop.setLocale(e.target.value);
+        }
+      });
+    }
+  </script>
 </body>
 
 </html>
