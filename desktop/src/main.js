@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 
 // ===== 网络代理配置 =====
-const envPath = path.join(__dirname, '.env.local');
+const envPath = path.join(__dirname, '..', '.env.local');
 const proxyConfig = {};
 try {
   const proxyContent = fs.readFileSync(envPath, 'utf-8');
@@ -33,7 +33,7 @@ if (proxyConfig.url) {
 
 // 读取 .env.local 配置
 function loadEnvConfig() {
-  const envPath = path.join(__dirname, '.env.local');
+  const envPath = path.join(__dirname, '..', '.env.local');
   const config = {};
   try {
     const content = fs.readFileSync(envPath, 'utf-8');
@@ -141,7 +141,7 @@ function createWindow() {
     show: false,
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();

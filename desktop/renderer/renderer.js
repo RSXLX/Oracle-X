@@ -9,6 +9,67 @@ const t = I18n.t.bind(I18n);
 let currentTransactions = null;
 let currentWalletIndex = -1;
 
+// ==================== 通用分页器 ====================
+const paginationState = {};
+
+function renderPagination(containerId, totalItems, perPage, currentPage, onPageChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const totalPages = Math.ceil(totalItems / perPage);
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const start = (currentPage - 1) * perPage + 1;
+  const end = Math.min(currentPage * perPage, totalItems);
+
+  let buttonsHtml = '';
+
+  // Prev button
+  buttonsHtml += `<button ${currentPage === 1 ? 'disabled' : ''} data-page="${currentPage - 1}">‹</button>`;
+
+  // Page numbers with ellipsis
+  const pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3) pages.push('...');
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      pages.push(i);
+    }
+    if (currentPage < totalPages - 2) pages.push('...');
+    pages.push(totalPages);
+  }
+
+  pages.forEach(p => {
+    if (p === '...') {
+      buttonsHtml += '<span class="pagination-ellipsis">…</span>';
+    } else {
+      buttonsHtml += `<button class="${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`;
+    }
+  });
+
+  // Next button
+  buttonsHtml += `<button ${currentPage === totalPages ? 'disabled' : ''} data-page="${currentPage + 1}">›</button>`;
+
+  container.innerHTML = `
+    <span class="pagination-info">${start}-${end} / ${totalItems}</span>
+    <div class="pagination-buttons">${buttonsHtml}</div>
+  `;
+
+  container.querySelectorAll('.pagination-buttons button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = parseInt(btn.dataset.page);
+      if (!isNaN(page) && page >= 1 && page <= totalPages) {
+        onPageChange(page);
+      }
+    });
+  });
+}
+
 // ==================== Tab 切换 ====================
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -225,14 +286,23 @@ function renderWalletAIAnalysis(data) {
   el.innerHTML = html;
 }
 
-function renderWalletTransactions(txs) {
+// 存储钱包交易数据用于分页
+let walletTxData = [];
+
+function renderWalletTransactions(txs, page = 1) {
   const tbody = document.getElementById('txTbody');
   if (!txs?.length) {
     tbody.innerHTML = `<tr><td colspan="5" class="muted">${t('common.noRecord')}</td></tr>`;
+    renderPagination('walletTxPagination', 0, 15, 1, () => { });
     return;
   }
 
-  tbody.innerHTML = txs.slice(0, 30).map(tx => `
+  walletTxData = txs;
+  const perPage = 15;
+  const start = (page - 1) * perPage;
+  const pageData = txs.slice(start, start + perPage);
+
+  tbody.innerHTML = pageData.map(tx => `
     <tr>
       <td>${tx.timestamp ? new Date(tx.timestamp).toLocaleString() : '-'}</td>
       <td><span class="badge badge-${tx.isIncoming ? 'allow' : 'block'}">${tx.isIncoming ? t('wallet.incoming') : t('wallet.outgoing')}</span></td>
@@ -241,6 +311,10 @@ function renderWalletTransactions(txs) {
       <td>${tx.method || '-'}</td>
     </tr>
   `).join('');
+
+  renderPagination('walletTxPagination', txs.length, perPage, page, (p) => {
+    renderWalletTransactions(walletTxData, p);
+  });
 }
 
 document.getElementById('addWalletBtn')?.addEventListener('click', addWallet);
@@ -385,12 +459,21 @@ function formatHoldTime(hours) {
   return t('time.months', { n: (hours / 24 / 30).toFixed(1) });
 }
 
-function renderCSVTransactions(txs) {
+// 存储 CSV 交易数据用于分页
+let csvTxData = [];
+
+function renderCSVTransactions(txs, page = 1) {
   const tbody = document.getElementById('csvTbody');
   if (!txs?.length) {
     tbody.innerHTML = `<tr><td colspan="8" class="muted">${t('common.noData')}</td></tr>`;
+    renderPagination('csvTxPagination', 0, 20, 1, () => { });
     return;
   }
+
+  csvTxData = txs;
+  const perPage = 20;
+  const start = (page - 1) * perPage;
+  const pageData = txs.slice(start, start + perPage);
 
   const marketLabels = {
     crypto: t('marketLabels.crypto'),
@@ -402,7 +485,7 @@ function renderCSVTransactions(txs) {
     other: t('marketLabels.other'),
   };
 
-  tbody.innerHTML = txs.slice(0, 50).map(tx => `
+  tbody.innerHTML = pageData.map(tx => `
     <tr>
       <td>${tx.timestamp ? new Date(tx.timestamp).toLocaleString() : tx.rawTime || '-'}</td>
       <td>${tx.symbol || tx.ticker || '-'}${tx.assetName ? ` <small>${tx.assetName}</small>` : ''}</td>
@@ -414,6 +497,10 @@ function renderCSVTransactions(txs) {
       <td>${tx.currency || '-'}</td>
     </tr>
   `).join('');
+
+  renderPagination('csvTxPagination', txs.length, perPage, page, (p) => {
+    renderCSVTransactions(csvTxData, p);
+  });
 }
 
 document.getElementById('importFileBtn')?.addEventListener('click', importFile);
@@ -607,31 +694,50 @@ ${t('report.tradesCount')}: ${stats.totalTrades} | ${t('report.amount')}: ${stat
 document.getElementById('exportReportBtn')?.addEventListener('click', exportReport);
 
 // ==================== 决策日志 ====================
+let allDecisionLogs = [];
+
 async function refreshLogs() {
   try {
-    const { items } = await window.oracleDesktop.listDecisionLogs(20);
+    const { items } = await window.oracleDesktop.listDecisionLogs(100);
     const el = document.getElementById('decisionLogs');
     if (!el) return;
 
     if (!items?.length) {
       el.innerHTML = `<p class="muted">${t('monitor.decisionLogEmpty')}</p>`;
+      renderPagination('decisionLogsPagination', 0, 10, 1, () => { });
       return;
     }
 
-    const actionLabels = { block: t('monitor.actionBlock'), warn: t('monitor.actionWarn'), allow: t('monitor.actionAllow') };
-    el.innerHTML = items.map(log => {
-      const time = log.created_at ? new Date(log.created_at).toLocaleString() : '-';
-      const badge = log.action === 'block' ? 'block' : log.action === 'warn' ? 'warn' : 'allow';
-      return `<div class="log-item">
-        <span class="badge badge-${badge}">${actionLabels[log.action] || log.action || '-'}</span>
-        <span>${log.app_name || '-'}</span>
-        <span class="muted">${time}</span>
-        ${log.detail ? `<small class="muted">${typeof log.detail === 'string' ? log.detail.slice(0, 80) : ''}</small>` : ''}
-      </div>`;
-    }).join('');
+    allDecisionLogs = items;
+    renderDecisionLogsPage(1);
   } catch (err) {
     console.error('Load logs error:', err);
   }
+}
+
+function renderDecisionLogsPage(page) {
+  const el = document.getElementById('decisionLogs');
+  if (!el) return;
+
+  const perPage = 10;
+  const start = (page - 1) * perPage;
+  const pageData = allDecisionLogs.slice(start, start + perPage);
+
+  const actionLabels = { block: t('monitor.actionBlock'), warn: t('monitor.actionWarn'), allow: t('monitor.actionAllow') };
+  el.innerHTML = pageData.map(log => {
+    const time = log.created_at ? new Date(log.created_at).toLocaleString() : '-';
+    const badge = log.action === 'block' ? 'block' : log.action === 'warn' ? 'warn' : 'allow';
+    return `<div class="log-item">
+      <span class="badge badge-${badge}">${actionLabels[log.action] || log.action || '-'}</span>
+      <span>${log.app_name || '-'}</span>
+      <span class="muted">${time}</span>
+      ${log.detail ? `<small class="muted">${typeof log.detail === 'string' ? log.detail.slice(0, 80) : ''}</small>` : ''}
+    </div>`;
+  }).join('');
+
+  renderPagination('decisionLogsPagination', allDecisionLogs.length, perPage, page, (p) => {
+    renderDecisionLogsPage(p);
+  });
 }
 
 // ==================== 历史导入 ====================
