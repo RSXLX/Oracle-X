@@ -8,7 +8,8 @@ const path = require('path');
 
 // 从 .env.local 读取默认 AI 配置
 function loadScreenshotAIConfig() {
-  const envPath = path.join(__dirname, '.env.local');
+  // .env.local 在 desktop/ 根目录，而当前文件在 desktop/src/analyzer/
+  const envPath = require('path').join(__dirname, '..', '..', '.env.local');
   const cfg = { apiKey: '', baseUrl: 'https://mydmx.huoyuanqudao.cn/v1', model: 'MiniMax-M2.5-highspeed' };
   try {
     const content = fs.readFileSync(envPath, 'utf-8');
