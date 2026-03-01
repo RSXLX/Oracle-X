@@ -142,11 +142,21 @@ function createWindow() {
     show: false,
   });
 
-  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', settings.onboardingCompleted ? 'index.html' : 'onboarding.html'));
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     console.log('[Oracle-X] Started');
+
+    // 自动更新（生产环境）
+    if (app.isPackaged) {
+      try {
+        const { initAutoUpdater } = require('./system/auto-updater');
+        initAutoUpdater(mainWindow);
+      } catch (err) {
+        console.warn('[AutoUpdater] Init failed:', err.message);
+      }
+    }
   });
 
   // 托盘
@@ -537,6 +547,31 @@ function setupIPC() {
     // 刷新托盘菜单
     if (trayManager) trayManager.updateContextMenu();
     return true;
+  });
+
+  // ==================== Onboarding ====================
+  ipcMain.handle('finishOnboarding', async () => {
+    settings.onboardingCompleted = true;
+    if (settingsStorage) await settingsStorage.save(settings);
+    // 跳转到主界面
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+    }
+    return true;
+  });
+
+  // ==================== 自动更新 ====================
+  ipcMain.handle('downloadUpdate', () => {
+    try {
+      const { downloadUpdate } = require('./system/auto-updater');
+      downloadUpdate();
+    } catch (e) { console.warn('[AutoUpdater]', e.message); }
+  });
+  ipcMain.handle('installUpdate', () => {
+    try {
+      const { installUpdate } = require('./system/auto-updater');
+      installUpdate();
+    } catch (e) { console.warn('[AutoUpdater]', e.message); }
   });
 
   // ==================== 设置 ====================

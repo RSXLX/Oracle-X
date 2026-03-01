@@ -59,5 +59,15 @@ contextBridge.exposeInMainWorld('oracleDesktop', {
   // i18n
   setLocale: (lang) => ipcRenderer.invoke('setLocale', lang),
 
+  // Onboarding
+  finishOnboarding: () => ipcRenderer.invoke('finishOnboarding'),
+
+  // Auto Update
+  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', (event, info) => callback(info)),
+  onUpdateProgress: (callback) => ipcRenderer.on('update-progress', (event, info) => callback(info)),
+  onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', () => callback()),
+  downloadUpdate: () => ipcRenderer.invoke('downloadUpdate'),
+  installUpdate: () => ipcRenderer.invoke('installUpdate'),
+
   platform: process.platform,
 });

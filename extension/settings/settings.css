@@ -1,16 +1,17 @@
 /* Oracle-X Extension Settings - 与 Side Panel 风格一致 */
+@import '../design-tokens.css';
 
 :root {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #141414;
-  --bg-card: #1a1a1a;
-  --text-primary: #ffffff;
-  --text-secondary: #888888;
-  --accent-green: #22c55e;
-  --accent-red: #ef4444;
-  --accent-yellow: #eab308;
-  --accent-blue: #3b82f6;
-  --border-color: #2a2a2a;
+  --bg-primary: var(--ox-bg-primary);
+  --bg-secondary: var(--ox-bg-secondary);
+  --bg-card: var(--ox-bg-card);
+  --text-primary: var(--ox-text-primary);
+  --text-secondary: var(--ox-text-secondary);
+  --accent-green: var(--ox-success);
+  --accent-red: var(--ox-danger);
+  --accent-yellow: var(--ox-warning);
+  --accent-blue: var(--ox-accent);
+  --border-color: var(--ox-border);
 }
 
 * {

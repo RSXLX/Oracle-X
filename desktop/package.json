@@ -1,6 +1,6 @@
 {
   "name": "oracle-x-desktop",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Oracle-X NoFOMO - AI Trading Assistant",
   "main": "src/main.js",
   "author": "Oracle-X Team",
@@ -12,6 +12,8 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "electron-builder --mac --publish never",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux"
@@ -20,12 +22,17 @@
     "appId": "com.oraclex.nofomo",
     "productName": "Oracle-X-NoFOMO",
     "npmRebuild": false,
+    "afterSign": "scripts/notarize.js",
     "directories": {
       "output": "release"
     },
     "mac": {
       "category": "public.app-category.finance",
       "icon": "icons/icon.png",
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
+      "gatekeeperAssess": false,
       "target": [
         "dmg"
       ]
@@ -62,15 +69,22 @@
       "src/**/*",
       "renderer/**/*",
       "icons/**/*"
-    ]
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "RSXLX",
+      "repo": "Oracle-X"
+    }
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "electron": "^33.2.1",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
+    "electron-updater": "^6.8.3",
     "https-proxy-agent": "^7.0.6",
     "uiohook-napi": "^1.5.4",
     "xlsx": "^0.18.5"

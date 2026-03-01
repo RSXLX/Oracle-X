@@ -15,12 +15,28 @@ let serverInstance = null;
  * @param {object} marketData   - MarketDataService 实例
  * @param {object} decisionLogger - DecisionLogger 实例
  */
+// 检查请求来源是否可信（chrome-extension:// 或 localhost 跨域）
+function isTrustedOrigin(req) {
+    const origin = req.headers.origin || '';
+    const referer = req.headers.referer || '';
+    // 仅信任 chrome-extension:// 来源（Extension 跨域请求会携带 Origin）
+    // 或 localhost/127.0.0.1 来源（Desktop 内部调用）
+    return origin.startsWith('chrome-extension://') ||
+        origin.startsWith('http://localhost') ||
+        origin.startsWith('http://127.0.0.1') ||
+        referer.startsWith('chrome-extension://');
+    // 注意：浏览器直接导航（无 Origin）不视为可信
+}
+
 function startLocalServer(settingsRef, marketData, decisionLogger) {
     if (serverInstance) return;
 
     serverInstance = http.createServer(async (req, res) => {
-        // CORS：允许 Extension 跨域访问
-        res.setHeader('Access-Control-Allow-Origin', '*');
+        // CORS：仅信任来源可跨域访问
+        const origin = req.headers.origin || '';
+        if (origin.startsWith('chrome-extension://') || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        }
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         res.setHeader('Content-Type', 'application/json');
@@ -44,17 +60,19 @@ function startLocalServer(settingsRef, marketData, decisionLogger) {
             }
 
             // ── GET /api/settings ──────────────────────────────────────────
-            // 返回 Extension 需要的配置字段（不暴露无关字段）
+            // 可信来源返回完整配置；其他来源脱敏
             if (req.method === 'GET' && pathname === '/api/settings') {
                 const s = settingsRef.current;
+                const trusted = isTrustedOrigin(req);
                 res.writeHead(200);
                 res.end(JSON.stringify({
                     aiBaseUrl: s.apiBaseUrl || '',
-                    aiApiKey: s.apiKey || '',
+                    ...(trusted
+                        ? { aiApiKey: s.apiKey || '' }
+                        : { hasApiKey: !!s.apiKey }),
                     aiModel: s.aiModel || '',
-                    // 视觉模型：Desktop 暂无单独配置，复用 aiModel or 留空由 Extension 自填
                     aiVisionModel: s.aiVisionModel || '',
-                    proxyUrl: s.proxyUrl || '',
+                    proxyUrl: trusted ? (s.proxyUrl || '') : undefined,
                 }));
                 return;
             }
@@ -132,18 +150,11 @@ function startLocalServer(settingsRef, marketData, decisionLogger) {
             // ── GET /api/stats ────────────────────────────────────────────
             // 拦截统计概览
             if (req.method === 'GET' && pathname === '/api/stats') {
-                if (decisionLogger && decisionLogger.db) {
+                if (decisionLogger) {
                     try {
-                        const [logs] = await decisionLogger.db.execute(
-                            "SELECT COUNT(*) as total, SUM(CASE WHEN action='cancelled' THEN 1 ELSE 0 END) as blocked FROM decision_logs"
-                        );
+                        const stats = await decisionLogger.getStats();
                         res.writeHead(200);
-                        res.end(JSON.stringify({
-                            ok: true,
-                            totalInterceptions: logs[0]?.total || 0,
-                            blocked: logs[0]?.blocked || 0,
-                            proceeded: (logs[0]?.total || 0) - (logs[0]?.blocked || 0),
-                        }));
+                        res.end(JSON.stringify({ ok: true, ...stats }));
                     } catch (err) {
                         res.writeHead(500);
                         res.end(JSON.stringify({ ok: false, error: err.message }));

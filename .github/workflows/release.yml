@@ -1,4 +1,4 @@
-name: Build & Release Desktop (macOS)
+name: Build & Release (macOS + Extension)
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-mac:
+  build:
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -25,20 +25,33 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      # ── Desktop Build ──
+      - name: Install Desktop dependencies
         working-directory: desktop
         run: npm ci
 
       - name: Build macOS dmg
         working-directory: desktop
-        run: npx electron-builder --mac --publish never
+        run: npx electron-builder --mac --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
+      # ── Extension Package ──
+      - name: Package Extension
+        run: |
+          cd extension
+          zip -r ../Oracle-X-Extension-${{ github.ref_name }}.zip . \
+            -x "*.DS_Store" "node_modules/*" "*.md" "packaging.json"
+
+      # ── Upload All Artifacts ──
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             desktop/release/*.dmg
             desktop/release/*.zip
+            Oracle-X-Extension-${{ github.ref_name }}.zip
           generate_release_notes: true

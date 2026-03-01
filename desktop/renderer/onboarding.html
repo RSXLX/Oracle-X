@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Oracle-X — 欢迎</title>
+    <link rel="stylesheet" href="../../shared/design-tokens.css" />
+    <link rel="stylesheet" href="../../shared/icons.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--ox-font);
+            background: var(--ox-bg-primary);
+            color: var(--ox-text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .onboarding {
+            max-width: 520px;
+            width: 90%;
+            animation: fade-in 0.4s ease;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Progress */
+        .progress {
+            display: flex;
+            gap: var(--ox-space-sm);
+            margin-bottom: var(--ox-space-xl);
+            justify-content: center;
+        }
+
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--ox-border);
+            transition: all var(--ox-transition);
+        }
+
+        .progress-dot.active {
+            background: var(--ox-accent);
+            box-shadow: 0 0 8px rgba(88, 166, 255, 0.4);
+        }
+
+        .progress-dot.done {
+            background: var(--ox-success);
+        }
+
+        /* Step */
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+            animation: fade-in 0.3s ease;
+        }
+
+        .step-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: var(--ox-radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--ox-space-lg);
+            font-size: 32px;
+        }
+
+        .step-icon .ox-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .step-icon-blue {
+            background: rgba(88, 166, 255, 0.12);
+            color: var(--ox-accent);
+        }
+
+        .step-icon-green {
+            background: rgba(63, 185, 80, 0.12);
+            color: var(--ox-success);
+        }
+
+        .step-icon-purple {
+            background: rgba(137, 87, 229, 0.12);
+            color: #bc8cff;
+        }
+
+        .step h2 {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: var(--ox-space-sm);
+        }
+
+        .step p.subtitle {
+            text-align: center;
+            color: var(--ox-text-secondary);
+            font-size: 14px;
+            margin-bottom: var(--ox-space-lg);
+            line-height: 1.6;
+        }
+
+        /* Card */
+        .card {
+            background: var(--ox-bg-secondary);
+            border: 1px solid var(--ox-border);
+            border-radius: var(--ox-radius-lg);
+            padding: var(--ox-space-lg);
+            margin-bottom: var(--ox-space-md);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: var(--ox-space-md);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--ox-text-secondary);
+            margin-bottom: var(--ox-space-xs);
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--ox-bg-primary);
+            border: 1px solid var(--ox-border);
+            border-radius: var(--ox-radius-md);
+            color: var(--ox-text-primary);
+            font-size: 14px;
+            font-family: var(--ox-font);
+            transition: border-color var(--ox-transition);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--ox-accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.12);
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--ox-text-muted);
+            margin-top: var(--ox-space-xs);
+        }
+
+        /* Feature list */
+        .feature-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--ox-space-sm);
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: center;
+            gap: var(--ox-space-sm);
+            font-size: 14px;
+            color: var(--ox-text-secondary);
+        }
+
+        .feature-list li .ox-icon {
+            color: var(--ox-accent);
+            flex-shrink: 0;
+        }
+
+        /* Buttons */
+        .actions {
+            display: flex;
+            gap: var(--ox-space-sm);
+            margin-top: var(--ox-space-lg);
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--ox-radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--ox-transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--ox-space-sm);
+            font-family: var(--ox-font);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--ox-accent);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #238636, #2ea043);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2ea043, #3fb950);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--ox-bg-secondary);
+            color: var(--ox-text-secondary);
+            border: 1px solid var(--ox-border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--ox-border-light);
+            color: var(--ox-text-primary);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, #8957e5, #bc8cff);
+            color: #fff;
+        }
+
+        .btn-accent:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(137, 87, 229, 0.3);
+        }
+
+        /* Status */
+        .test-status {
+            text-align: center;
+            font-size: 13px;
+            margin-top: var(--ox-space-sm);
+            min-height: 20px;
+        }
+
+        .test-status.success {
+            color: var(--ox-success);
+        }
+
+        .test-status.error {
+            color: var(--ox-danger);
+        }
+
+        .test-status.loading {
+            color: var(--ox-text-muted);
+        }
+
+        /* Checklist */
+        .checklist {
+            display: flex;
+            flex-direction: column;
+            gap: var(--ox-space-sm);
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: var(--ox-space-sm);
+            padding: 10px 14px;
+            background: var(--ox-bg-primary);
+            border-radius: var(--ox-radius-md);
+            border: 1px solid var(--ox-border);
+            font-size: 14px;
+        }
+
+        .checklist-item .ox-icon {
+            flex-shrink: 0;
+        }
+
+        .checklist-item .done {
+            color: var(--ox-success);
+        }
+
+        .checklist-item .pending {
+            color: var(--ox-text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="onboarding">
+        <!-- Progress -->
+        <div class="progress">
+            <div class="progress-dot active" id="dot-0"></div>
+            <div class="progress-dot" id="dot-1"></div>
+            <div class="progress-dot" id="dot-2"></div>
+        </div>
+
+        <!-- Step 1: Welcome -->
+        <div class="step active" id="step-0">
+            <div class="step-icon step-icon-blue">
+                <span class="ox-icon ox-icon-shield"></span>
+            </div>
+            <h2>欢迎使用 Oracle-X</h2>
+            <p class="subtitle">AI 驱动的交易冷静层，帮助你在冲动交易前多想一步。<br>3 步完成配置，即刻启用智能风控。</p>
+            <div class="card">
+                <ul class="feature-list">
+                    <li><span class="ox-icon ox-icon-monitor"></span> 全局监控交易 App，AI 实时风险评估</li>
+                    <li><span class="ox-icon ox-icon-shield"></span> 智能拦截冲动交易，冷静期保护</li>
+                    <li><span class="ox-icon ox-icon-chart"></span> 链上钱包分析 + 交易记录导入</li>
+                    <li><span class="ox-icon ox-icon-bot"></span> 多模型 AI 支持，MiniMax / OpenAI / 自定义</li>
+                </ul>
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" onclick="goStep(1)">开始配置 →</button>
+            </div>
+        </div>
+
+        <!-- Step 2: AI Config -->
+        <div class="step" id="step-1">
+            <div class="step-icon step-icon-purple">
+                <span class="ox-icon ox-icon-bot"></span>
+            </div>
+            <h2>配置 AI 服务</h2>
+            <p class="subtitle">Oracle-X 支持任何 OpenAI 兼容 API。<br>填写你的 AI 服务信息以启用智能分析。</p>
+            <div class="card">
+                <div class="form-group">
+                    <label>API Base URL</label>
+                    <input type="text" id="aiBaseUrl" placeholder="https://api.openai.com/v1" />
+                    <span class="hint">支持 OpenAI / MiniMax / 任何兼容 API</span>
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" id="aiApiKey" placeholder="sk-..." />
+                </div>
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <input type="text" id="aiModel" placeholder="gpt-4o-mini" />
+                </div>
+                <button class="btn btn-accent" id="testBtn" onclick="testAI()" style="width:100%">
+                    <span class="ox-icon ox-icon-link"></span> 测试连接
+                </button>
+                <div class="test-status" id="testStatus"></div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="goStep(0)">← 返回</button>
+                <button class="btn btn-primary" onclick="goStep(2)">下一步 →</button>
+            </div>
+            <p class="hint" style="text-align:center;margin-top:8px;">跳过此步也可以，稍后在设置中配置</p>
+        </div>
+
+        <!-- Step 3: Extension + Done -->
+        <div class="step" id="step-2">
+            <div class="step-icon step-icon-green">
+                <span class="ox-icon ox-icon-check"></span>
+            </div>
+            <h2>一切就绪！</h2>
+            <p class="subtitle">Desktop 已配置完成，推荐安装 Chrome Extension 获得完整体验。</p>
+            <div class="card">
+                <div class="checklist">
+                    <div class="checklist-item">
+                        <span class="ox-icon ox-icon-check done"></span>
+                        <span>Desktop 应用已启动</span>
+                    </div>
+                    <div class="checklist-item">
+                        <span class="ox-icon ox-icon-check" id="aiStatusIcon" style="color:var(--ox-text-muted)"></span>
+                        <span id="aiStatusText">AI 服务未配置（可稍后设置）</span>
+                    </div>
+                    <div class="checklist-item">
+                        <span class="ox-icon ox-icon-puzzle pending"></span>
+                        <span>Chrome Extension（推荐安装）</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card" style="font-size:13px;color:var(--ox-text-secondary);line-height:1.6;">
+                <strong style="color:var(--ox-text-primary)">安装 Extension：</strong><br>
+                1. 打开 Chrome → 更多工具 → 扩展程序<br>
+                2. 开启「开发者模式」→ 加载已解压的扩展程序<br>
+                3. 选择项目目录下的 <code style="color:var(--ox-accent)">extension/</code> 文件夹
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="goStep(1)">← 返回</button>
+                <button class="btn btn-primary" onclick="finish()">开始使用 Oracle-X</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="onboarding.js"></script>
+</body>
+
+</html>

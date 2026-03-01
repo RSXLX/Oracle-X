@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oracle-X - 交易拦截</title>
+    <link rel="stylesheet" href="../icons.css">
     <style>
         * {
             margin: 0;
@@ -18,6 +19,24 @@
             color: #c9d1d9;
             width: 100%;
             min-height: 100vh;
+            animation: intercept-slide-up 0.25s ease-out;
+        }
+
+        @keyframes intercept-slide-up {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        button:focus-visible {
+            outline: 2px solid #58a6ff;
+            outline-offset: 2px;
         }
 
         .header {
@@ -316,7 +335,7 @@
 
 <body>
     <div class="header">
-        <span class="header-icon">🛡️</span>
+        <span class="header-icon"><span class="ox-icon ox-icon-lg ox-icon-shield"></span></span>
         <span class="header-title">交易拦截</span>
         <span class="header-badge" id="levelBadge">--</span>
     </div>
@@ -328,15 +347,15 @@
 
     <div class="score-card" id="scoreCard">
         <div class="score-header">
-            <span class="score-label">⚡ 快速风险评分</span>
+            <span class="score-label"><span class="ox-icon ox-icon-zap"></span> 快速风险评分</span>
             <span class="score-value" id="scoreValue">--</span>
         </div>
         <div class="score-reasons" id="scoreReasons"></div>
     </div>
 
     <div class="actions" id="actionsDiv">
-        <button class="btn-proceed" id="btnProceed">✅ 继续交易</button>
-        <button class="btn-cancel" id="btnCancel">❌ 取消</button>
+        <button class="btn-proceed" id="btnProceed"><span class="ox-icon ox-icon-check"></span> 继续交易</button>
+        <button class="btn-cancel" id="btnCancel"><span class="ox-icon ox-icon-x"></span> 取消</button>
     </div>
 
     <div class="shortcut-hint">Enter = 继续 | Esc = 取消</div>
@@ -344,7 +363,7 @@
     <div class="ai-section">
         <div class="ai-header" id="aiHeader">
             <div class="ai-header-left">
-                <span>🤖</span>
+                <span><span class="ox-icon ox-icon-bot"></span></span>
                 <span id="aiStatusText">AI 深度分析中...</span>
             </div>
             <span class="ai-toggle" id="aiToggle">▼ 展开</span>

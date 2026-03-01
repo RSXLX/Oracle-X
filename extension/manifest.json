@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Oracle-X",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "AI-powered crypto trading FOMO checker - Check before you trade",
   "permissions": [
     "activeTab",
@@ -36,8 +36,7 @@
         "*://*.huobi.com/*",
         "*://*.gate.io/*",
         "*://*.uniswap.org/*",
-        "*://app.uniswap.org/*",
-        "http://localhost/*"
+        "*://app.uniswap.org/*"
       ],
       "js": [
         "content/storage.js",
@@ -67,10 +66,11 @@
     "48": "icons/logo.svg",
     "128": "icons/logo.svg"
   },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "host_permissions": [
     "http://127.0.0.1:17891/*",
-    "http://localhost:3000/*",
-    "http://localhost:3001/*",
     "*://*.binance.com/*",
     "*://*.okx.com/*",
     "*://*.bybit.com/*",

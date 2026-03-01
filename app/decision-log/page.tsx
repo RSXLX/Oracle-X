@@ -25,10 +25,7 @@ interface DecisionLogItem {
   createdAt: string;
 }
 
-interface DecisionLogResponse {
-  count: number;
-  items: DecisionLogItem[];
-}
+
 
 const ACTION_CLASS: Record<DecisionAction, string> = {
   ALLOW: 'allow',
@@ -48,9 +45,20 @@ export default function DecisionLogPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/decision-log?limit=${nextLimit}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as DecisionLogResponse;
+      let data: { items?: DecisionLogItem[] };
+      try {
+        // 优先从 Desktop HTTP 服务读取真实 SQLite 数据
+        const desktopRes = await fetch(`http://127.0.0.1:17891/api/decision-logs?limit=${nextLimit}`, {
+          signal: AbortSignal.timeout(2000),
+        });
+        if (!desktopRes.ok) throw new Error('Desktop unavailable');
+        data = await desktopRes.json();
+      } catch {
+        // Desktop 不可用，回退到 WebApp 本地 JSONL
+        const res = await fetch(`/api/decision-log?limit=${nextLimit}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+      }
       setItems(data.items || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch logs');

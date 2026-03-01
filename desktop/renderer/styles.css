@@ -1,41 +1,42 @@
 /* Oracle-X Desktop — Design System v2.0 */
+@import '../../shared/design-tokens.css';
 
-/* ==================== Design Tokens ==================== */
+/* ==================== Design Tokens (映射 --ox-* 共享变量) ==================== */
 :root {
-    /* Colors */
-    --bg-body: #0d1117;
-    --bg-card: #161b22;
-    --bg-inset: #0d1117;
-    --bg-hover: #1c2129;
+    /* Colors — 引用共享 design-tokens */
+    --bg-body: var(--ox-bg-primary);
+    --bg-card: var(--ox-bg-secondary);
+    --bg-inset: var(--ox-bg-primary);
+    --bg-hover: var(--ox-bg-hover);
 
-    --border-default: #30363d;
+    --border-default: var(--ox-border);
     --border-muted: #21262d;
-    --border-hover: #484f58;
+    --border-hover: var(--ox-border-light);
 
-    --text-primary: #e6edf3;
-    --text-secondary: #8b949e;
-    --text-muted: #6e7681;
+    --text-primary: var(--ox-text-primary);
+    --text-secondary: var(--ox-text-secondary);
+    --text-muted: var(--ox-text-muted);
 
-    --accent-blue: #58a6ff;
+    --accent-blue: var(--ox-accent);
     --accent-purple: #bc8cff;
-    --accent-green: #3fb950;
-    --accent-red: #f85149;
-    --accent-yellow: #d29922;
+    --accent-green: var(--ox-success);
+    --accent-red: var(--ox-danger);
+    --accent-yellow: var(--ox-warning);
 
     --gradient-primary: linear-gradient(135deg, #238636, #2ea043);
     --gradient-accent: linear-gradient(135deg, #8957e5, #bc8cff);
-    --gradient-header: linear-gradient(135deg, #58a6ff, #bc8cff);
+    --gradient-header: linear-gradient(135deg, var(--ox-accent), #bc8cff);
 
-    /* Spacing */
-    --space-xs: 4px;
-    --space-sm: 8px;
+    /* Spacing — 引用共享 tokens */
+    --space-xs: var(--ox-space-xs);
+    --space-sm: var(--ox-space-sm);
     --space-md: 12px;
-    --space-lg: 16px;
-    --space-xl: 24px;
-    --space-2xl: 32px;
+    --space-lg: var(--ox-space-md);
+    --space-xl: var(--ox-space-lg);
+    --space-2xl: var(--ox-space-xl);
 
-    /* Typography */
-    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    /* Typography — 引用共享 tokens */
+    --font-family: var(--ox-font);
     --font-xs: 11px;
     --font-sm: 12px;
     --font-base: 14px;
@@ -44,15 +45,15 @@
     --font-2xl: 28px;
     --line-height: 1.6;
 
-    /* Radius */
-    --radius-sm: 6px;
+    /* Radius — 引用共享 tokens */
+    --radius-sm: var(--ox-radius-sm);
     --radius-md: 10px;
-    --radius-lg: 14px;
-    --radius-full: 999px;
+    --radius-lg: var(--ox-radius-lg);
+    --radius-full: var(--ox-radius-full);
 
-    /* Transitions */
+    /* Transitions — 引用共享 tokens */
     --transition-fast: 0.15s ease;
-    --transition-normal: 0.25s ease;
+    --transition-normal: var(--ox-transition-slow);
 }
 
 /* ==================== Reset & Base ==================== */
@@ -793,6 +794,55 @@ tbody tr:last-child td {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* ==================== Skeleton Loader ==================== */
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--border-muted);
+    border-radius: var(--radius-sm);
+}
+
+.skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.skeleton-text {
+    height: 14px;
+    margin-bottom: var(--space-sm);
+}
+
+.skeleton-chart {
+    height: 200px;
+    border-radius: var(--radius-md);
+}
+
+.skeleton-stat {
+    height: 48px;
+    border-radius: var(--radius-md);
+}
+
+/* ==================== Focus Visible ==================== */
+.btn:focus-visible,
+.tab:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
 }
 
 /* ==================== Insights ==================== */

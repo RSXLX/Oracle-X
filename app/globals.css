@@ -1,45 +1,45 @@
 /* Oracle-X 深色主题设计系统 */
+@import '../shared/design-tokens.css';
 
 :root {
-  /* 主色调 */
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #21262d;
+  /* 主色调 — 引用共享 design-tokens */
+  --bg-primary: var(--ox-bg-primary);
+  --bg-secondary: var(--ox-bg-secondary);
+  --bg-tertiary: var(--ox-bg-hover);
   --bg-card: rgba(22, 27, 34, 0.8);
 
   /* 文字 */
-  --text-primary: #f0f6fc;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
+  --text-primary: var(--ox-text-primary);
+  --text-secondary: var(--ox-text-secondary);
+  --text-muted: var(--ox-text-muted);
 
   /* 交易色彩 */
-  --color-long: #3fb950;
-  --color-long-bg: rgba(63, 185, 80, 0.15);
-  --color-short: #f85149;
-  --color-short-bg: rgba(248, 81, 73, 0.15);
+  --color-long: var(--ox-success);
+  --color-long-bg: var(--ox-success-soft);
+  --color-short: var(--ox-danger);
+  --color-short-bg: var(--ox-danger-soft);
 
   /* 状态色 */
-  --color-warning: #d29922;
-  --color-warning-bg: rgba(210, 153, 34, 0.15);
-  --color-info: #58a6ff;
+  --color-warning: var(--ox-warning);
+  --color-warning-bg: var(--ox-warning-soft);
+  --color-info: var(--ox-accent);
 
   /* 品牌 */
   --color-accent: #a371f7;
   --color-accent-glow: rgba(163, 113, 247, 0.3);
 
   /* 边框 */
-  --border-color: #30363d;
-  --border-radius: 12px;
-  --border-radius-sm: 8px;
+  --border-color: var(--ox-border);
+  --border-radius: var(--ox-radius-lg);
+  --border-radius-sm: var(--ox-radius-md);
 
   /* 动画 */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
 
   /* 字体 */
-  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", monospace;
-  --font-sans:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: var(--ox-font-mono);
+  --font-sans: var(--ox-font);
 }
 
 * {
@@ -135,10 +135,12 @@ body {
 
 /* 闪烁光标动画 */
 @keyframes blink {
+
   0%,
   50% {
     opacity: 1;
   }
+
   51%,
   100% {
     opacity: 0;
@@ -154,6 +156,7 @@ body {
   from {
     width: 0;
   }
+
   to {
     width: 100%;
   }
@@ -165,6 +168,7 @@ body {
     opacity: 0;
     transform: scale(0.8);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -243,8 +247,46 @@ body {
     opacity: 0;
     transform: translateX(-50%) translateY(1rem);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* Skeleton Loader */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius-sm);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-chart {
+  height: 300px;
+  border-radius: var(--border-radius);
+}
+
+/* Focus Visible */
+button:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
 }
