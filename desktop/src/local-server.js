@@ -308,10 +308,34 @@ function startLocalServer(settingsRef, marketData, decisionLogger) {
                     return;
                 }
 
+                // 视觉识别：优先使用 .env.local 中的 VISION_* 配置（火山方舟）
+                // 回退到 settings 中的配置
+                const envVision = (() => {
+                    const cfg = { baseUrl: '', apiKey: '', model: 'Kimi-K2.5' };
+                    try {
+                        const envPath = require('path').join(__dirname, '..', '.env.local');
+                        const content = require('fs').readFileSync(envPath, 'utf-8');
+                        for (const line of content.split('\n')) {
+                            const t = line.trim();
+                            if (!t || t.startsWith('#')) continue;
+                            const eq = t.indexOf('=');
+                            if (eq > 0) {
+                                const k = t.slice(0, eq).trim(), v = t.slice(eq + 1).trim();
+                                if (k === 'VISION_BASE_URL') cfg.baseUrl = v;
+                                if (k === 'VISION_API_KEY') cfg.apiKey = v;
+                                if (k === 'VISION_MODEL') cfg.model = v;
+                            }
+                        }
+                    } catch { /* ignore */ }
+                    return cfg;
+                })();
+
                 const s = settingsRef.current;
-                const aiBaseUrl = (s.apiBaseUrl || '').replace(/\/$/, '');
-                const aiApiKey = s.apiKey || '';
-                const visionModel = s.aiVisionModel || s.aiModel || '';
+                const aiBaseUrl = envVision.baseUrl || (s.apiBaseUrl || '').replace(/\/$/, '');
+                const aiApiKey = envVision.apiKey || s.apiKey || '';
+                const visionModel = envVision.model || s.aiVisionModel || 'Kimi-K2.5';
+
+                console.log(`[Recognize] Settings: apiBaseUrl=${aiBaseUrl ? aiBaseUrl.slice(0, 30) + '...' : 'EMPTY'}, apiKey=${aiApiKey ? aiApiKey.slice(0, 8) + '...' : 'EMPTY'}, model=${visionModel || 'EMPTY'}`);
 
                 if (!aiApiKey) {
                     res.writeHead(500);
@@ -340,45 +364,64 @@ function startLocalServer(settingsRef, marketData, decisionLogger) {
 如果无法识别某个字段，使用 null。`;
 
                 try {
-                    const aiRes = await fetch(`${aiBaseUrl}/chat/completions`, {
+                    // 火山方舟 Responses API 格式
+                    const requestBody = {
+                        model: visionModel,
+                        input: [{
+                            role: 'user',
+                            content: [
+                                { type: 'input_image', image_url: base64Data },
+                                { type: 'input_text', text: recognizePrompt },
+                            ],
+                        }],
+                    };
+
+                    console.log('[Recognize] Calling:', `${aiBaseUrl}/responses`, 'model:', visionModel);
+                    const aiRes = await fetch(`${aiBaseUrl}/responses`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${aiApiKey}`,
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            model: visionModel,
-                            messages: [{
-                                role: 'user',
-                                content: [
-                                    { type: 'image_url', image_url: { url: base64Data } },
-                                    { type: 'text', text: recognizePrompt },
-                                ],
-                            }],
-                            temperature: 0.2,
-                            max_tokens: 500,
-                            stream: false,
-                        }),
+                        body: JSON.stringify(requestBody),
                     });
 
                     if (!aiRes.ok) {
                         const errText = await aiRes.text();
+                        console.error('[Recognize] AI API error:', aiRes.status, errText);
                         res.writeHead(502);
                         res.end(JSON.stringify({ error: `Vision AI error: ${aiRes.status}`, detail: errText }));
                         return;
                     }
 
                     const aiData = await aiRes.json();
-                    const content = aiData.choices?.[0]?.message?.content || '';
+                    // 火山方舟 Responses API 的响应格式：output[].content[].text
+                    let content = '';
+                    if (aiData.output) {
+                        for (const item of aiData.output) {
+                            if (item.type === 'message' && item.content) {
+                                for (const c of item.content) {
+                                    if (c.type === 'output_text') content += c.text;
+                                }
+                            }
+                        }
+                    }
+                    // 降级兼容 OpenAI 格式
+                    if (!content && aiData.choices?.[0]?.message?.content) {
+                        content = aiData.choices[0].message.content;
+                    }
+                    console.log('[Recognize] AI raw content:', content);
 
                     let result;
                     try {
-                        const jsonMatch = content.match(/\{[\s\S]*\}/);
+                        const cleaned = content.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+                        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
                         result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
                     } catch {
                         result = null;
                     }
 
+                    console.log('[Recognize] Parsed result:', result ? JSON.stringify(result) : 'PARSE_FAILED');
                     res.writeHead(200);
                     res.end(JSON.stringify(result || { platform: null, pair: null, trade_type: null, direction_hint: null, confidence: 0 }));
                 } catch (aiErr) {
