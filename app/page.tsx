@@ -4,6 +4,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useBinanceKlines } from './hooks/useBinanceKlines';
 import { useTechnicalIndicators } from './hooks/useTechnicalIndicators';
+import { useDesktopAPI } from './hooks/useDesktopAPI';
 import TimeframeSelector from './components/TimeframeSelector';
 import IndicatorPanel from './components/IndicatorPanel';
 import SentimentPanel from './components/SentimentPanel';
@@ -40,6 +41,7 @@ export default function Home() {
   // Hooks
   const { klines, stats, loading, connected, usingMock } = useBinanceKlines(symbol, interval);
   const indicators = useTechnicalIndicators(klines);
+  const desktop = useDesktopAPI();
 
   const isNegative = parseFloat(stats.change24h) < 0;
 
@@ -72,6 +74,10 @@ export default function Home() {
             <div className={`${styles.connectionStatus} ${connected ? styles.connected : ''}`}>
               {usingMock ? '⚠️ MOCK DATA' : (connected ? '● LIVE' : '○ OFFLINE')}
             </div>
+            <div className={`${styles.connectionStatus} ${desktop.connected ? styles.connected : ''}`}
+              title={desktop.connected ? 'Desktop HTTP 服务已连接' : 'Desktop 未连接'}>
+              {desktop.connected ? '● Desktop' : '○ Desktop'}
+            </div>
             <a className={styles.logLink} href="/decision-log">Decision Log</a>
           </div>
         </div>
@@ -101,9 +107,18 @@ export default function Home() {
             fearGreedLabel={FEAR_GREED.label}
           />
 
-          {/* Info Banner */}
+          {/* Info Banner + Desktop Stats */}
           <div className={styles.tradeButtons}>
-            <p className={styles.tradeTip}>📊 Data Dashboard · AI analysis via Desktop / Extension</p>
+            {desktop.connected && desktop.stats ? (
+              <div style={{ textAlign: 'center', width: '100%' }}>
+                <p className={styles.tradeTip} style={{ marginBottom: '8px' }}>
+                  🛡️ 拦截 {desktop.stats.totalInterceptions} 次 · 阻止 {desktop.stats.blocked} 次 · 放行 {desktop.stats.proceeded} 次
+                </p>
+                <p className={styles.tradeTip} style={{ fontSize: '11px', opacity: 0.6 }}>Data from Desktop SQLite · Auto-refresh 30s</p>
+              </div>
+            ) : (
+              <p className={styles.tradeTip}>📊 Data Dashboard · {desktop.connected ? 'Desktop Connected' : 'Start Desktop for real-time stats'}</p>
+            )}
           </div>
         </div>
       </div>

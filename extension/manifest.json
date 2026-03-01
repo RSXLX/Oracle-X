@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Oracle-X",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "description": "AI-powered crypto trading FOMO checker - Check before you trade",
   "permissions": [
     "activeTab",
@@ -68,6 +68,7 @@
     "128": "icons/logo.svg"
   },
   "host_permissions": [
+    "http://127.0.0.1:17891/*",
     "http://localhost:3000/*",
     "http://localhost:3001/*",
     "*://*.binance.com/*",

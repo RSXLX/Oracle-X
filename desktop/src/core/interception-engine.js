@@ -7,7 +7,7 @@
 class InterceptionEngine {
     /**
      * @param {object} deps
-     * @param {object} deps.db          - MySQL 连接池
+     * @param {object} deps.db          - SQLite 数据库（MySQL 兼容包装器）
      * @param {object} deps.marketData  - MarketDataService 实例
      * @param {object} deps.riskEngine  - RiskEngine 实例
      * @param {object} deps.decisionLogger - DecisionLogger 实例

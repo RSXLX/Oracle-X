@@ -109,6 +109,52 @@ function startLocalServer(settingsRef, marketData, decisionLogger) {
                 return;
             }
 
+            // ── GET /api/decision-logs ────────────────────────────────────
+            // 查询决策日志（供 WebApp 仪表盘读取真实拦截记录）
+            if (req.method === 'GET' && pathname === '/api/decision-logs') {
+                const limit = parseInt(url.searchParams.get('limit')) || 50;
+                if (decisionLogger) {
+                    try {
+                        const items = await decisionLogger.get(limit);
+                        res.writeHead(200);
+                        res.end(JSON.stringify({ ok: true, items }));
+                    } catch (err) {
+                        res.writeHead(500);
+                        res.end(JSON.stringify({ ok: false, error: err.message }));
+                    }
+                } else {
+                    res.writeHead(200);
+                    res.end(JSON.stringify({ ok: true, items: [] }));
+                }
+                return;
+            }
+
+            // ── GET /api/stats ────────────────────────────────────────────
+            // 拦截统计概览
+            if (req.method === 'GET' && pathname === '/api/stats') {
+                if (decisionLogger && decisionLogger.db) {
+                    try {
+                        const [logs] = await decisionLogger.db.execute(
+                            "SELECT COUNT(*) as total, SUM(CASE WHEN action='cancelled' THEN 1 ELSE 0 END) as blocked FROM decision_logs"
+                        );
+                        res.writeHead(200);
+                        res.end(JSON.stringify({
+                            ok: true,
+                            totalInterceptions: logs[0]?.total || 0,
+                            blocked: logs[0]?.blocked || 0,
+                            proceeded: (logs[0]?.total || 0) - (logs[0]?.blocked || 0),
+                        }));
+                    } catch (err) {
+                        res.writeHead(500);
+                        res.end(JSON.stringify({ ok: false, error: err.message }));
+                    }
+                } else {
+                    res.writeHead(200);
+                    res.end(JSON.stringify({ ok: true, totalInterceptions: 0, blocked: 0, proceeded: 0 }));
+                }
+                return;
+            }
+
             // ── POST /api/analyze ──────────────────────────────────────────
             // AI 风控分析代理（SSE 流式输出）
             if (req.method === 'POST' && pathname === '/api/analyze') {
