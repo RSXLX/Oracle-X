@@ -739,7 +739,13 @@ async function handleTradeIntercept(data, sender) {
       }
     } catch { }
 
-    await handleAnalysis({ symbol, direction, marketData });
+    await handleAnalysis({
+      symbol,
+      direction,
+      marketData,
+      tradeType: tradeContext.orderType || null,  // spot/perpetual/futures (from platforms.js)
+      platform: tradeContext.platform || null,
+    });
   } catch (error) {
     console.error('[Oracle-X] Trade intercept failed:', error);
     if (tabId) chrome.tabs.sendMessage(tabId, { type: 'PROCEED_TRADE' });

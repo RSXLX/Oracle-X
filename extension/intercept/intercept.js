@@ -72,6 +72,12 @@ function renderTradeInfo(data) {
     if (tradeContext.leverage && tradeContext.leverage > 1) {
         metaHTML += `<span class="trade-meta-item leverage-warn">⚠️ ${tradeContext.leverage}x 杠杆</span>`;
     }
+    // 交易类型标签
+    const typeLabels = { 'spot': '💰 现货', 'perpetual': '📜 永续', 'futures': '📋 交割', 'margin': '⚡ 杠杆' };
+    const orderType = tradeContext.orderType || scoreResult?.tradeType || null;
+    if (orderType && typeLabels[orderType]) {
+        metaHTML += `<span class="trade-meta-item">${typeLabels[orderType]}</span>`;
+    }
     document.getElementById('tradeMeta').innerHTML = metaHTML;
 
     // 风险等级 Badge
