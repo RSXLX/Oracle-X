@@ -883,6 +883,7 @@ function renderSidePanelResult(result) {
   const action = result?.action || 'allow';
   const risk = result?.riskLevel || 'low';
   const platform = result?.platform || t('sidePanel.unidentified');
+  const symbol = result?.symbol || result?.pair || t('sidePanel.unidentified');
   const buttons = result?.buttons || [];
   const hasTrade = result?.hasTradingButtons || false;
   const summary = result?.summary || '';
@@ -893,11 +894,14 @@ function renderSidePanelResult(result) {
     low: { bg: '#1a3a2a', border: '#16a34a', text: '#4ade80', emoji: '🟢', label: t('sidePanel.riskLow') },
   }[risk] || { bg: '#1a3a2a', border: '#16a34a', text: '#4ade80', emoji: '🟢', label: t('sidePanel.riskLow') };
 
+  const symbolHtml = symbol !== t('sidePanel.unidentified') ? `<div class="detail-item"><span class="detail-label">交易品种</span><span class="detail-value">${symbol}</span></div>` : '';
+
   document.getElementById('sidePanelTitle').textContent = t('sidePanel.resultTitle', { emoji: rc.emoji, label: rc.label });
   document.getElementById('sidePanelBody').innerHTML = `
     <div class="analysis-detail-card" style="border:1px solid ${rc.border};background:${rc.bg};">
       <div class="detail-grid">
         <div class="detail-item"><span class="detail-label">${t('sidePanel.platform')}</span><span class="detail-value">${platform}</span></div>
+        ${symbolHtml}
         <div class="detail-item"><span class="detail-label">${t('sidePanel.riskLevel')}</span><span class="detail-value" style="color:${rc.text};">${rc.emoji} ${rc.label}</span></div>
         <div class="detail-item"><span class="detail-label">${t('sidePanel.tradeButtons')}</span><span class="detail-value">${hasTrade ? t('sidePanel.detected') : t('sidePanel.notDetected')}</span></div>
         <div class="detail-item"><span class="detail-label">${t('sidePanel.suggestedAction')}</span><span class="detail-value" style="color:${rc.text};">${action === 'block' ? t('sidePanel.actionBlock') : action === 'warn' ? t('sidePanel.actionWarn') : t('sidePanel.actionAllow')}</span></div>

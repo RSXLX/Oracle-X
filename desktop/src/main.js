@@ -367,13 +367,51 @@ function registerHotkeys() {
       if (screenshotAnalyzer && settings.apiKey) {
         try {
           const result = await screenshotAnalyzer.analyze(tmpFile);
-          console.log('[Hotkey] Analysis result:', result?.action || 'unknown');
+          console.log('[Hotkey] Vision result:', result);
+
+          // 添加：二次风控研判
+          if (result && (result.symbol || result.pair) && aiTradeAnalyzer && settings.apiKey) {
+            try {
+              let md = null;
+              const symbolToFetch = result.symbol || result.pair;
+              if (marketData && symbolToFetch) {
+                const querySymbol = result.marketType === 'crypto' || result.trade_type === 'perpetual' ? symbolToFetch.replace('/', '').toUpperCase() : symbolToFetch;
+                md = await marketData.fetchMarketData(querySymbol, result.marketType || 'crypto');
+              }
+
+              // 尝试推断 direction
+              if (!result.direction_hint && result.buttons && result.buttons.length > 0) {
+                const btnStr = result.buttons.join(',').toUpperCase();
+                if (btnStr.includes('多') || btnStr.includes('买') || btnStr.includes('BUY')) {
+                  result.direction_hint = 'long';
+                } else if (btnStr.includes('空') || btnStr.includes('卖') || btnStr.includes('SELL')) {
+                  result.direction_hint = 'short';
+                }
+              }
+
+              const analysis = await aiTradeAnalyzer.analyzeSingleTrade(
+                symbolToFetch,
+                result.direction_hint || 'unknown',
+                result.tradeType || result.trade_type || result.marketType || 'spot',
+                result.platform || '未知平台',
+                md
+              );
+
+              if (analysis) {
+                result.action = analysis.action || result.action;
+                result.riskLevel = analysis.riskLevel || result.riskLevel;
+                result.summary = analysis.summary || result.summary;
+              }
+            } catch (err) {
+              console.log('[Hotkey] Text AI Analysis error:', err.message);
+            }
+          }
 
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('screenshot-result', result);
           }
           if (notificationManager) {
-            const emoji = result?.action === 'block' ? '🔴' : '✅';
+            const emoji = result?.action === 'block' ? '🔴' : result?.action === 'warn' ? '🟡' : '✅';
             notificationManager.show(`${emoji} ${i18n.t('dialog.analysisComplete')}`, result?.summary || i18n.t('dialog.analysisDone'));
           }
         } catch (analyzeErr) {
@@ -392,7 +430,7 @@ function registerHotkeys() {
       }
 
       // 清理临时截图文件
-      try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+      // try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
     });
   });
   console.log('[Hotkey] Cmd+Shift+S registered:', screenshotRegistered);
@@ -777,14 +815,52 @@ function setupIPC() {
     if (screenshotAnalyzer && settings.apiKey) {
       try {
         const result = await screenshotAnalyzer.analyze(tmpFile);
-        console.log('[Screenshot] Analysis result:', result?.action || 'unknown');
+        console.log('[Screenshot] Vision result:', result);
+
+        // 添加：二次风控研判
+        if (result && (result.symbol || result.pair) && aiTradeAnalyzer && settings.apiKey) {
+          try {
+            let md = null;
+            const symbolToFetch = result.symbol || result.pair;
+            if (marketData && symbolToFetch) {
+              const querySymbol = result.marketType === 'crypto' || result.trade_type === 'perpetual' ? symbolToFetch.replace('/', '').toUpperCase() : symbolToFetch;
+              md = await marketData.fetchMarketData(querySymbol, result.marketType || 'crypto');
+            }
+
+            if (!result.direction_hint && result.buttons && result.buttons.length > 0) {
+              const btnStr = result.buttons.join(',').toUpperCase();
+              if (btnStr.includes('多') || btnStr.includes('买') || btnStr.includes('BUY')) {
+                result.direction_hint = 'long';
+              } else if (btnStr.includes('空') || btnStr.includes('卖') || btnStr.includes('SELL')) {
+                result.direction_hint = 'short';
+              }
+            }
+
+            const analysis = await aiTradeAnalyzer.analyzeSingleTrade(
+              symbolToFetch,
+              result.direction_hint || 'unknown',
+              result.tradeType || result.trade_type || result.marketType || 'spot',
+              result.platform || '未知',
+              md
+            );
+
+            if (analysis) {
+              result.action = analysis.action || result.action;
+              result.riskLevel = analysis.riskLevel || result.riskLevel;
+              result.summary = analysis.summary || result.summary;
+            }
+            console.log('[Screenshot] Text AI result:', analysis);
+          } catch (err) {
+            console.log('[Screenshot] Text AI Analysis error:', err.message);
+          }
+        }
 
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('screenshot-result', result);
         }
 
         // 清理临时文件
-        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+        // try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
 
         return result;
       } catch (err) {
@@ -792,7 +868,7 @@ function setupIPC() {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('screenshot-error', { error: err.message });
         }
-        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+        // try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
         return { error: err.message };
       }
     }

@@ -50,9 +50,10 @@ const _defaultAICfg = loadScreenshotAIConfig();
 class ScreenshotAnalyzer {
   constructor(options = {}) {
     this.provider = options.visionProvider || 'minimax';
-    this.apiKey = options.apiKey || _defaultAICfg.apiKey;
-    this.apiBaseUrl = options.apiBaseUrl || _defaultAICfg.baseUrl;
-    this.model = options.model || _defaultAICfg.model;
+    // 强制优先使用 .env.local 中针对视觉模型的专属配置
+    this.apiKey = _defaultAICfg.apiKey || options.apiKey;
+    this.apiBaseUrl = _defaultAICfg.baseUrl || options.apiBaseUrl;
+    this.model = _defaultAICfg.model || options.model;
 
     this.buttonKeywords = [
       '买入', '卖出', '开多', '开空', '平多', '平空', '做多', '做空',
@@ -62,9 +63,8 @@ class ScreenshotAnalyzer {
   }
 
   configure(config) {
-    this.apiKey = config.apiKey || this.apiKey;
-    this.apiBaseUrl = config.apiBaseUrl || this.apiBaseUrl;
-    this.model = config.model || this.model;
+    // 禁用外部覆盖，因为主进程传过来的是文本模型的配置
+    // 如果想要动态配置视觉模型，需要在前端区分 aiModel 和 aiVisionModel
   }
 
   async analyze(screenshotPath) {

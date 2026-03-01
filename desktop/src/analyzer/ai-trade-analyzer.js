@@ -230,6 +230,72 @@ ${txSummary}
             rawContent: content,
         };
     }
+    /**
+     * AI 分析单次交易（用于快捷键截图的二次风控研判）
+     */
+    async analyzeSingleTrade(symbol, directionHint, tradeType, platform, marketData) {
+        let mdSnippet = '无法获取实时行情数据';
+        if (marketData) {
+            const pricePos = marketData.high24h && marketData.low24h && marketData.price
+                ? ((parseFloat(marketData.price) - parseFloat(marketData.low24h)) / (parseFloat(marketData.high24h) - parseFloat(marketData.low24h)) * 100).toFixed(0)
+                : null;
+            mdSnippet = `价格: $${marketData.price || '0'}, 24h变动: ${marketData.change24h || '0'}%, 24h高/低: $${marketData.high24h || '0'} / $${marketData.low24h || '0'}`;
+            if (pricePos !== null) mdSnippet += `, 当前价格处于24h区间的 ${pricePos}% 位置`;
+        }
+
+        const prompt = `你是一名资深金融风控分析师，请对这笔即将在客户端执行的交易做极速评估。
+
+[交易参数]
+- 币种/标的: ${symbol}
+- 操作方向: ${directionHint === 'long' ? '开多/买入' : directionHint === 'short' ? '开空/卖出' : '未知方向'}
+- 交易类型: ${tradeType === 'perpetual' ? '永续合约' : tradeType === 'spot' ? '现货' : tradeType === 'futures' ? '交割合约' : tradeType}
+- 交易平台: ${platform}
+- 市场行情: ${mdSnippet}
+
+请严格按以下 JSON 格式输出分析结果：
+{
+  "action": "block|warn|allow",
+  "riskLevel": "high|medium|low",
+  "summary": "针对这笔交易的专业分析和建议（两到三句话，指出核心风险点和当前盘面提示，如果是高风险直接说明不要操作原因）"
+}`;
+
+        try {
+            console.log(`[AI-Analyzer] Calling MiniMax for single trade: ${symbol} ${directionHint}`);
+            const response = await fetch(`${this.baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: this.model,
+                    messages: [
+                        { role: 'system', content: '你是一个冷静、客观、极度注重风险控制的顶级交易系统AI。直接输出JSON数据。' },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 800
+                })
+            });
+
+            if (!response.ok) {
+                console.error('[AI-Analyzer] MiniMax request failed:', await response.text());
+                return { action: 'warn', riskLevel: 'medium', summary: 'AI风控分析暂不可用，请注意风险。' };
+            }
+
+            const data = await response.json();
+            const content = data.choices[0].message.content;
+
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            }
+            return { action: 'warn', riskLevel: 'medium', summary: content.slice(0, 200) };
+        } catch (e) {
+            console.error('[AI-Analyzer] Analysis error:', e.message);
+            return { action: 'warn', riskLevel: 'medium', summary: 'AI风控分析遇到网络或解析错误。' };
+        }
+    }
 }
 
 module.exports = { AITradeAnalyzer };
