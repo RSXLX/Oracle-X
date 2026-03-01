@@ -119,6 +119,41 @@ function renderSidePanelResult(result) {
     const symbolHtml = symbol !== t('sidePanel.unidentified') ? `<div class="detail-item"><span class="detail-label">交易品种</span><span class="detail-value">${symbol}</span></div>` : '';
 
     document.getElementById('sidePanelTitle').textContent = t('sidePanel.resultTitle', { emoji: rc.emoji, label: rc.label });
+
+    // 市场行情卡片
+    const mi = result?.marketInfo;
+    let marketHtml = '';
+    if (mi && mi.price) {
+        const changeColor = mi.change24h >= 0 ? '#3fb950' : '#f85149';
+        const changeSign = mi.change24h >= 0 ? '+' : '';
+        const pricePos = mi.high24h && mi.low24h && mi.high24h !== mi.low24h
+            ? ((mi.price - mi.low24h) / (mi.high24h - mi.low24h) * 100).toFixed(0) : null;
+        marketHtml = `
+      <div class="card" style="margin:0 0 12px 0;padding:12px;">
+        <h2 style="font-size:14px;margin-bottom:8px;">📊 实时行情 · ${mi.symbol || symbol}</h2>
+        <div class="detail-grid">
+          <div class="detail-item"><span class="detail-label">当前价格</span><span class="detail-value" style="font-size:16px;font-weight:600;">${mi.currency === 'CNY' ? '¥' : '$'}${Number(mi.price).toLocaleString()}</span></div>
+          <div class="detail-item"><span class="detail-label">24h 涨跌</span><span class="detail-value" style="color:${changeColor};font-weight:600;">${changeSign}${Number(mi.change24h).toFixed(2)}%</span></div>
+          <div class="detail-item"><span class="detail-label">24h 最高</span><span class="detail-value">${mi.currency === 'CNY' ? '¥' : '$'}${Number(mi.high24h).toLocaleString()}</span></div>
+          <div class="detail-item"><span class="detail-label">24h 最低</span><span class="detail-value">${mi.currency === 'CNY' ? '¥' : '$'}${Number(mi.low24h).toLocaleString()}</span></div>
+          ${mi.volume24h ? `<div class="detail-item"><span class="detail-label">成交量</span><span class="detail-value">${Number(mi.volume24h).toLocaleString()}</span></div>` : ''}
+          ${pricePos !== null ? `<div class="detail-item"><span class="detail-label">区间位置</span><span class="detail-value">${pricePos}%</span></div>` : ''}
+        </div>
+      </div>`;
+    }
+
+    // AI 建议卡片（增强样式）
+    let summaryHtml = '';
+    if (summary) {
+        const summaryBg = risk === 'high' ? 'rgba(220,38,38,0.1)' : risk === 'medium' ? 'rgba(217,119,6,0.1)' : 'rgba(22,163,74,0.1)';
+        const summaryBorder = risk === 'high' ? '#dc2626' : risk === 'medium' ? '#d97706' : '#16a34a';
+        summaryHtml = `
+      <div class="card" style="margin:0 0 12px 0;padding:12px;background:${summaryBg};border:1px solid ${summaryBorder}30;">
+        <h2 style="font-size:14px;margin-bottom:6px;">🤖 AI 风控建议</h2>
+        <p style="color:#e6edf3;font-size:13px;line-height:1.7;margin:0;">${summary}</p>
+      </div>`;
+    }
+
     document.getElementById('sidePanelBody').innerHTML = `
     <div class="analysis-detail-card" style="border:1px solid ${rc.border};background:${rc.bg};">
       <div class="detail-grid">
@@ -130,8 +165,9 @@ function renderSidePanelResult(result) {
       </div>
       ${buttons.length ? `<div style="margin-bottom:12px;"><span class="detail-label">${t('sidePanel.detectedButtons')}</span><div class="analysis-buttons-list" style="margin-top:6px;">${buttons.map(b => `<span class="analysis-button-tag">${b}</span>`).join('')}</div></div>` : ''}
     </div>
-    ${summary ? `<div class="card" style="margin:0;"><h2 style="font-size:14px;">${t('sidePanel.aiSuggestion')}</h2><p style="color:#8b949e;font-size:13px;line-height:1.6;">${summary}</p></div>` : ''}
-    <div class="card" style="margin-top:12px;">
+    ${marketHtml}
+    ${summaryHtml}
+    <div class="card" style="margin-top:0;">
       <h2 style="font-size:14px;">${t('sidePanel.detailTitle')}</h2>
       <div style="font-size:12px;color:#6e7681;">
         <div style="margin-bottom:4px;">${t('sidePanel.detailTime', { time: new Date().toLocaleString() })}</div>

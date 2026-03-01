@@ -386,7 +386,8 @@ function registerHotkeys() {
               const symbolToFetch = result.symbol || result.pair;
               if (marketData && symbolToFetch) {
                 const querySymbol = result.marketType === 'crypto' || result.trade_type === 'perpetual' ? symbolToFetch.replace('/', '').toUpperCase() : symbolToFetch;
-                md = await marketData.fetchMarketData(querySymbol, result.marketType || 'crypto');
+                md = await marketData.getSymbolInfo(querySymbol, result.marketType || 'crypto');
+                if (md) result.marketInfo = md;
               }
 
               // 尝试推断 direction
@@ -859,7 +860,8 @@ function setupIPC() {
             const symbolToFetch = result.symbol || result.pair;
             if (marketData && symbolToFetch) {
               const querySymbol = result.marketType === 'crypto' || result.trade_type === 'perpetual' ? symbolToFetch.replace('/', '').toUpperCase() : symbolToFetch;
-              md = await marketData.fetchMarketData(querySymbol, result.marketType || 'crypto');
+              md = await marketData.getSymbolInfo(querySymbol, result.marketType || 'crypto');
+              if (md) result.marketInfo = md;
             }
 
             if (!result.direction_hint && result.buttons && result.buttons.length > 0) {
